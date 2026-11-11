@@ -25,3 +25,4 @@ export function createClient(): SupabaseClient {
 }
 
 export { createClient as createBrowserClient };
+
