@@ -17,3 +17,4 @@ const MapView = dynamic(() => import('@/components/map/MapView'), {
 export default function MapWrapper() {
   return <MapView />;
 }
+
