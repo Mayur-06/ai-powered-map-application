@@ -9,4 +9,5 @@ This file tracks features, ideas, and enhancements deferred to maintain scope di
 - Saved trips and multi-route history
 - Advanced semantic search with pgvector (beyond keyword filters)
 - Revisit Turbopack after the hackathon.
+- Remove or protect /api/health/db before final freeze.
 
