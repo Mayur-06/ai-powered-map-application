@@ -8,6 +8,6 @@ This file tracks features, ideas, and enhancements deferred to maintain scope di
 - Full Supabase Auth (OAuth / Google Login)
 - Saved trips and multi-route history
 - Advanced semantic search with pgvector (beyond keyword filters)
-- Revisit Turbopack after the hackathon.
+- Revisit Turbopack and remove --webpack after the hackathon,
 - Remove or protect /api/health/db before final freeze.
 
