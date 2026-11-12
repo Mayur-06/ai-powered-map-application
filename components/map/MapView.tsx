@@ -1,28 +1,199 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Map, {
+  Marker,
+  Popup,
   NavigationControl,
   ScaleControl,
   GeolocateControl,
+  type MapRef,
+  type MapMouseEvent,
+  type MapTouchEvent,
   type ViewStateChangeEvent,
   type GeolocateResultEvent,
   type GeolocateErrorEvent,
 } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMapStore, MAPBOX_STYLES } from '@/lib/store/mapStore';
-import { Sun, Moon, AlertCircle, X } from 'lucide-react';
+import SearchBar from '@/components/map/SearchBar';
+import type { PlaceResult } from '@/lib/mapbox/search';
+import { Sun, Moon, AlertCircle, X, MapPin, Loader2 } from 'lucide-react';
 
 export default function MapView() {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
+  const mapRef = useRef<MapRef>(null);
   const viewState = useMapStore((state) => state.viewState);
   const setViewState = useMapStore((state) => state.setViewState);
+  const markers = useMapStore((state) => state.markers);
   const mapStyle = useMapStore((state) => state.mapStyle);
   const toggleMapStyle = useMapStore((state) => state.toggleMapStyle);
   const setUserLocation = useMapStore((state) => state.setUserLocation);
 
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [reversePopup, setReversePopup] = useState<{
+    longitude: number;
+    latitude: number;
+    name: string;
+    address: string;
+  } | null>(null);
+  const [searchBarText, setSearchBarText] = useState<string | undefined>(undefined);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
+
+  // Long-press detection references
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pressStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isInteractingRef = useRef<boolean>(false);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    pressStartPosRef.current = null;
+  }, []);
+
+  const handleFlyTo = useCallback((lng: number, lat: number) => {
+    mapRef.current?.flyTo({
+      center: [lng, lat],
+      zoom: 14,
+      duration: 1500,
+      essential: true,
+    });
+  }, []);
+
+  const handleReverseGeocode = useCallback(async (lng: number, lat: number) => {
+    setIsReverseGeocoding(true);
+    try {
+      const params = new URLSearchParams({
+        lng: lng.toString(),
+        lat: lat.toString(),
+        language: 'en',
+      });
+
+      const res = await fetch(`/api/search/reverse?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error('Failed to reverse geocode location');
+      }
+
+      const data = await res.json();
+      const place: PlaceResult | undefined = data.place;
+
+      if (place) {
+        // Set single pin in mapStore (replacing previous pin)
+        useMapStore.getState().setMarkers([
+          {
+            id: 'search-pin',
+            longitude: place.lng,
+            latitude: place.lat,
+            title: place.name || place.address,
+          },
+        ]);
+
+        // Show popup at coordinates
+        setReversePopup({
+          longitude: place.lng,
+          latitude: place.lat,
+          name: place.name || 'Selected Location',
+          address: place.address || `${place.lat.toFixed(5)}, ${place.lng.toFixed(5)}`,
+        });
+
+        // Also update search bar text
+        setSearchBarText(place.address || place.name);
+      }
+    } catch (err) {
+      console.error('Reverse geocode error:', err);
+    } finally {
+      setIsReverseGeocoding(false);
+    }
+  }, []);
+
+  // Map mouse & touch handlers for long-press
+  const handleMouseDown = useCallback(
+    (e: MapMouseEvent) => {
+      if (e.originalEvent.button !== 0) return;
+      clearLongPress();
+      pressStartPosRef.current = { x: e.point.x, y: e.point.y };
+
+      const { lng, lat } = e.lngLat;
+      longPressTimerRef.current = setTimeout(() => {
+        if (!isInteractingRef.current) {
+          handleReverseGeocode(lng, lat);
+        }
+        clearLongPress();
+      }, 600);
+    },
+    [clearLongPress, handleReverseGeocode]
+  );
+
+  const handleTouchStart = useCallback(
+    (e: MapTouchEvent) => {
+      if (e.points && e.points.length > 1) {
+        clearLongPress();
+        return;
+      }
+      clearLongPress();
+      pressStartPosRef.current = { x: e.point.x, y: e.point.y };
+
+      const { lng, lat } = e.lngLat;
+      longPressTimerRef.current = setTimeout(() => {
+        if (!isInteractingRef.current) {
+          handleReverseGeocode(lng, lat);
+        }
+        clearLongPress();
+      }, 600);
+    },
+    [clearLongPress, handleReverseGeocode]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: MapMouseEvent) => {
+      if (pressStartPosRef.current) {
+        const dist = Math.hypot(
+          e.point.x - pressStartPosRef.current.x,
+          e.point.y - pressStartPosRef.current.y
+        );
+        if (dist > 6) {
+          clearLongPress();
+        }
+      }
+    },
+    [clearLongPress]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: MapTouchEvent) => {
+      if (pressStartPosRef.current) {
+        const dist = Math.hypot(
+          e.point.x - pressStartPosRef.current.x,
+          e.point.y - pressStartPosRef.current.y
+        );
+        if (dist > 8) {
+          clearLongPress();
+        }
+      }
+    },
+    [clearLongPress]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleTouchEnd = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleInteractionStart = useCallback(() => {
+    isInteractingRef.current = true;
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleInteractionEnd = useCallback(() => {
+    isInteractingRef.current = false;
+    clearLongPress();
+  }, [clearLongPress]);
 
   const handleMove = useCallback(
     (evt: ViewStateChangeEvent) => {
@@ -82,7 +253,7 @@ export default function MapView() {
       className="relative h-screen w-screen overflow-hidden"
       style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}
     >
-      {/* Light / Dark map style toggle */}
+      {/* Light / Dark map style toggle (top-left) */}
       <div
         className="absolute top-4 left-4 z-10"
         style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 10 }}
@@ -91,46 +262,58 @@ export default function MapView() {
           type="button"
           onClick={toggleMapStyle}
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-muted transition-colors cursor-pointer"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            borderRadius: '6px',
-            border: '1px solid rgba(0,0,0,0.15)',
-            backgroundColor: 'rgba(255,255,255,0.95)',
-            color: '#111827',
-            padding: '6px 12px',
-            fontSize: '12px',
-            fontWeight: 500,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-            cursor: 'pointer',
-          }}
           aria-label="Toggle map style"
         >
           {mapStyle === 'streets' ? (
             <>
-              <Moon className="h-3.5 w-3.5 text-foreground" style={{ width: '14px', height: '14px' }} />
+              <Moon className="h-3.5 w-3.5 text-foreground" />
               <span>Dark Mode</span>
             </>
           ) : (
             <>
-              <Sun className="h-3.5 w-3.5 text-foreground" style={{ width: '14px', height: '14px' }} />
+              <Sun className="h-3.5 w-3.5 text-foreground" />
               <span>Light Mode</span>
             </>
           )}
         </button>
       </div>
 
+      {/* Search Bar - positioned to never overlap controls on mobile (375px) or desktop */}
+      <div
+        className="absolute top-16 left-4 w-[calc(100vw-72px)] max-w-sm sm:top-4 sm:left-40 sm:w-80 z-20"
+        style={{
+          position: 'absolute',
+          top: '64px',
+          left: '16px',
+          width: 'min(384px, calc(100vw - 72px))',
+          zIndex: 20,
+        }}
+      >
+        <SearchBar
+          value={searchBarText}
+          onChange={setSearchBarText}
+          onFlyTo={handleFlyTo}
+        />
+      </div>
+
+      {/* Reverse geocoding loading badge */}
+      {isReverseGeocoding && (
+        <div className="absolute top-28 left-4 sm:top-16 sm:left-40 z-20 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow-md backdrop-blur-sm">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+          <span>Finding address...</span>
+        </div>
+      )}
+
       {/* Location error message */}
       {locationError && (
         <div
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex max-w-sm items-center gap-2 rounded-md bg-destructive/90 px-3 py-2 text-xs text-destructive-foreground shadow-md backdrop-blur-sm"
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex max-w-sm items-center gap-2 rounded-md bg-destructive/90 px-3 py-2 text-xs text-destructive-foreground shadow-md backdrop-blur-sm"
           style={{
             position: 'absolute',
             top: '16px',
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 20,
+            zIndex: 30,
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
@@ -157,8 +340,22 @@ export default function MapView() {
       )}
 
       <Map
+        ref={mapRef}
         {...viewState}
         onMove={handleMove}
+        onMoveStart={handleInteractionStart}
+        onMoveEnd={handleInteractionEnd}
+        onDragStart={handleInteractionStart}
+        onDragEnd={handleInteractionEnd}
+        onZoomStart={handleInteractionStart}
+        onZoomEnd={handleInteractionEnd}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onTouchMove={handleTouchMove}
         mapboxAccessToken={token}
         mapStyle={MAPBOX_STYLES[mapStyle]}
         style={{ width: '100%', height: '100%' }}
@@ -172,8 +369,56 @@ export default function MapView() {
           onError={handleGeolocateError}
         />
         <ScaleControl position="bottom-left" />
+
+        {/* Render markers from mapStore using react-map-gl Marker */}
+        {markers.map((marker) => (
+          <Marker
+            key={marker.id}
+            longitude={marker.longitude}
+            latitude={marker.latitude}
+            anchor="bottom"
+          >
+            <div className="flex flex-col items-center cursor-pointer group">
+              <div className="relative flex items-center justify-center">
+                <MapPin className="h-8 w-8 text-red-600 fill-red-500 drop-shadow-md transition-transform group-hover:scale-110" />
+                <span className="absolute top-2 h-2 w-2 rounded-full bg-white shadow-xs" />
+              </div>
+              {marker.title && (
+                <span className="mt-0.5 rounded border border-border bg-background/95 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-xs whitespace-nowrap max-w-[180px] truncate">
+                  {marker.title}
+                </span>
+              )}
+            </div>
+          </Marker>
+        ))}
+
+        {/* Reverse geocoding popup */}
+        {reversePopup && (
+          <Popup
+            longitude={reversePopup.longitude}
+            latitude={reversePopup.latitude}
+            anchor="bottom"
+            offset={36}
+            onClose={() => setReversePopup(null)}
+            closeOnClick={false}
+            closeButton={true}
+          >
+            <div className="p-1 max-w-[220px] text-foreground">
+              <p className="font-semibold text-xs truncate">
+                {reversePopup.name}
+              </p>
+              {reversePopup.address && (
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                  {reversePopup.address}
+                </p>
+              )}
+              <p className="text-[10px] text-muted-foreground/70 mt-1 font-mono">
+                {reversePopup.latitude.toFixed(5)}, {reversePopup.longitude.toFixed(5)}
+              </p>
+            </div>
+          </Popup>
+        )}
       </Map>
     </div>
   );
 }
-
