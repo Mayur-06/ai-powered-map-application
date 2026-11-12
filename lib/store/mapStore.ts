@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import type { PaddingOptions } from 'mapbox-gl';
+import type { RouteResult, RouteMode, RouteStep, RouteGeometry, RouteManeuver } from '@/lib/mapbox/directions';
+
+export type { RouteResult, RouteMode, RouteStep, RouteGeometry, RouteManeuver };
 
 export interface UserLocation {
   longitude: number;
@@ -39,25 +42,6 @@ export interface Poi {
   summary?: Record<string, unknown> | null;
 }
 
-export interface RouteStep {
-  instruction: string;
-  distance: number;
-  duration: number;
-  name?: string;
-}
-
-export interface RouteGeometry {
-  type: string;
-  coordinates: number[][] | number[][][];
-}
-
-export interface RouteData {
-  geometry: RouteGeometry | Record<string, unknown>;
-  distance?: number;
-  duration?: number;
-  steps?: RouteStep[];
-}
-
 export type MapStyleMode = 'streets' | 'dark';
 
 export interface MapState {
@@ -65,14 +49,17 @@ export interface MapState {
   viewState: ViewState;
   markers: MarkerItem[];
   selectedPoi: Poi | null;
-  route: RouteData | null;
+  route: RouteResult | null;
+  routeMode: RouteMode;
   mapStyle: MapStyleMode;
   setUserLocation: (location: UserLocation | null) => void;
   setViewState: (viewState: ViewState) => void;
   updateViewState: (patch: Partial<ViewState>) => void;
   setMarkers: (markers: MarkerItem[]) => void;
   setSelectedPoi: (poi: Poi | null) => void;
-  setRoute: (route: RouteData | null) => void;
+  setRoute: (route: RouteResult | null) => void;
+  clearRoute: () => void;
+  setRouteMode: (mode: RouteMode) => void;
   setMapStyle: (style: MapStyleMode) => void;
   toggleMapStyle: () => void;
 }
@@ -96,6 +83,7 @@ export const useMapStore = create<MapState>((set) => ({
   markers: [],
   selectedPoi: null,
   route: null,
+  routeMode: 'drive',
   mapStyle: 'streets',
   setUserLocation: (location) => set({ userLocation: location }),
   setViewState: (viewState) => set({ viewState }),
@@ -104,6 +92,8 @@ export const useMapStore = create<MapState>((set) => ({
   setMarkers: (markers) => set({ markers }),
   setSelectedPoi: (poi) => set({ selectedPoi: poi }),
   setRoute: (route) => set({ route }),
+  clearRoute: () => set({ route: null }),
+  setRouteMode: (routeMode) => set({ routeMode }),
   setMapStyle: (mapStyle) => set({ mapStyle }),
   toggleMapStyle: () =>
     set((state) => ({

@@ -17,6 +17,8 @@ import Map, {
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMapStore, MAPBOX_STYLES } from '@/lib/store/mapStore';
 import SearchBar from '@/components/map/SearchBar';
+import RouteLayer from '@/components/map/RouteLayer';
+import DirectionsPanel from '@/components/map/DirectionsPanel';
 import type { PlaceResult } from '@/lib/mapbox/search';
 import { Sun, Moon, AlertCircle, X, MapPin, Loader2 } from 'lucide-react';
 
@@ -418,7 +420,12 @@ export default function MapView() {
             </div>
           </Popup>
         )}
+        {/* Route layer */}
+        <RouteLayer />
       </Map>
+
+      {/* Directions panel */}
+      <DirectionsPanel />
     </div>
   );
 }
