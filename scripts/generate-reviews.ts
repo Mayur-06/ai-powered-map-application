@@ -161,17 +161,20 @@ Rules:
 1. Reviews are SAMPLE data for a demo; keep them generic, plausible, and appropriate for the category.
 2. For each review, provide:
    - author: A common first name (e.g. Rahul, Priya, Amit, Sneha, Vikram, Pooja, Neha, Rohan).
-   - rating: Integer between 1 and 5. Mix ratings realistically (mostly 3 to 5, with occasional lower ratings like 1 or 2).
+   - rating: Integer between 1 and 5. Keep ratings mixed realistically (mostly 3 to 5, with some 1 or 2).
    - text: 1 to 2 sentences of generic, plausible impressions.
 3. Strict safety and accuracy constraints:
-   - Do NOT mention prices or specific currency amounts.
+   - Do NOT make claims about equipment working or failing (e.g. ATMs out of order, card readers down, machines broken).
+   - Do NOT make claims about cleanliness, sanitation, or hygiene.
+   - Do NOT make claims about safety or security.
+   - Do NOT mention staff behavior, attitudes, or staff/owner names.
+   - Do NOT mention prices, fees, costs, or specific currency amounts.
    - Do NOT mention opening hours, schedules, or timings.
    - Do NOT mention specific menu items, dishes, or products.
-   - Do NOT include brand claims, trademarks, or slogans.
-   - Do NOT mention staff names, owner names, or employee details.
-   - Do NOT mention street addresses, phone numbers, or exact coordinates.
-   - Do NOT claim anything specific about a named chain or company.
-4. Return the exact matching poi_id for each POI.`;
+   - Do NOT include brand claims, trademarks, slogans, or factual claims about named chains.
+   - Do NOT write anything that could read as a factual accusation or specific complaint about a named real business.
+4. Negative or middling reviews (ratings 1, 2, or 3) may ONLY mention generic, subjective impressions such as waiting time, crowding, or ambient noise.
+5. Return the exact matching poi_id for each POI.`;
 
       const result = await callWithRetry(async () => {
         return await generateObject({
@@ -289,3 +292,4 @@ main().catch((err) => {
   console.error('\nScript failure:', err instanceof Error ? err.message : err);
   process.exit(1);
 });
+

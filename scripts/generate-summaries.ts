@@ -126,20 +126,11 @@ async function main() {
     return revs && revs.length > 0;
   });
 
-  // Handle dry run case if no reviews exist in DB yet
-  if (isDryRun && eligiblePois.length === 0 && pois && pois.length > 0) {
-    console.log('\n[Dry Run Notice] Database contains no reviews yet.');
-    console.log('[Dry Run Notice] Generating synthetic sample reviews in-memory for testing the summarizer LLM call.\n');
-    const sampleBatch = pois.slice(0, limit || 5);
-    eligiblePois = sampleBatch.map((p: PoiCandidate) => {
-      reviewsByPoiId.set(p.id, [
-        `Pleasant ambiance and clean surroundings.`,
-        `Staff was polite and handled things smoothly.`,
-        `Gets slightly crowded during peak evening hours.`,
-        `Convenient location with reliable overall service.`,
-      ]);
-      return p;
-    });
+  if (eligiblePois.length === 0) {
+    console.log('No POIs found with reviews and a NULL summary in the database.');
+    console.log('Please run "npm run gen:reviews" first to seed reviews before running summaries.');
+    console.log('Final summary: Processed: 0, Skipped: 0, Failed: 0');
+    return;
   }
 
   console.log(`Found ${eligiblePois.length} POI(s) with reviews and NULL summary.`);
@@ -147,12 +138,6 @@ async function main() {
   if (typeof limit === 'number' && limit > 0) {
     eligiblePois = eligiblePois.slice(0, limit);
     console.log(`Processing limited subset: ${eligiblePois.length} POI(s).`);
-  }
-
-  if (eligiblePois.length === 0) {
-    console.log('No eligible POIs to summarize. Exiting.');
-    console.log('Final summary: Processed: 0, Skipped: 0, Failed: 0');
-    return;
   }
 
   const BATCH_SIZE = 5;
@@ -280,3 +265,4 @@ main().catch((err) => {
   console.error('\nScript failure:', err instanceof Error ? err.message : err);
   process.exit(1);
 });
+
