@@ -82,3 +82,10 @@ create policy "Allow public read on reviews"
   for select
   using (true);
 
+-- Grants
+grant usage on schema public to anon, authenticated, service_role;
+grant select on public.pois, public.reviews to anon, authenticated;
+grant all on all tables and all sequences in schema public to service_role;
+alter default privileges in schema public grant all on tables and on sequences to service_role;
+
+

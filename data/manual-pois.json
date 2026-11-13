@@ -1,2 +1,38 @@
-[]
-
+[
+    {
+        "name": "Bala Ji Pharmacy",
+        "category": "pharmacy",
+        "lng": 77.5085,
+        "lat": 28.4981
+    },
+    {
+        "name": "Apollo Pharmacy Sector Alpha I",
+        "category": "pharmacy",
+        "lng": 77.5139,
+        "lat": 28.4724
+    },
+    {
+        "name": "MYLYFCARE SMART PHARMACY",
+        "category": "pharmacy",
+        "lng": 77.5305,
+        "lat": 28.4952
+    },
+    {
+        "name": "Max 24 pharmacy",
+        "category": "pharmacy",
+        "lng": 77.5327,
+        "lat": 28.4526
+    },
+    {
+        "name": "Jan Aushadhi kendra Pharmacy",
+        "category": "pharmacy",
+        "lng": 77.5262,
+        "lat": 28.5042
+    },
+    {
+        "name": "Ratan Medicos Pvt. Ltd.",
+        "category": "pharmacy",
+        "lng": 77.5028,
+        "lat": 28.4631
+    }
+]

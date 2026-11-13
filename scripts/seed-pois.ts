@@ -371,40 +371,48 @@ export function parseElementsToPois(elements: OverpassElement[]): {
 
 async function main() {
   const isDryRun = process.argv.includes('--dry-run');
+  const isManualOnly = process.argv.includes('--manual-only');
 
   console.log(`Starting POI seed script for Greater Noida.`);
-  console.log(`Bounding Box: south=${BBOX.south}, west=${BBOX.west}, north=${BBOX.north}, east=${BBOX.east}`);
-  console.log(`User-Agent: ${USER_AGENT}`);
-  console.log(`Mode: ${isDryRun ? 'DRY-RUN (read-only, no database writes)' : 'LIVE SEED'}`);
+  if (!isManualOnly) {
+    console.log(`Bounding Box: south=${BBOX.south}, west=${BBOX.west}, north=${BBOX.north}, east=${BBOX.east}`);
+    console.log(`User-Agent: ${USER_AGENT}`);
+  }
+  console.log(`Mode: ${isDryRun ? 'DRY-RUN (read-only, no database writes)' : 'LIVE SEED'}${isManualOnly ? ' (MANUAL-ONLY)' : ''}`);
 
-  const query = buildOverpassQuery(BBOX);
-  const data = await fetchOverpassWithRetry(query);
-  const { pois: osmPois, diagnostics } = parseElementsToPois(data.elements || []);
+  let osmPois: PoiRow[] = [];
+  if (!isManualOnly) {
+    const query = buildOverpassQuery(BBOX);
+    const data = await fetchOverpassWithRetry(query);
+    const parsed = parseElementsToPois(data.elements || []);
+    osmPois = parsed.pois;
+    const diagnostics = parsed.diagnostics;
 
-  // Diagnostic report before name filtering
-  console.log('\n--- Raw Element Counts Before Name Filter ---');
-  console.log('Category'.padEnd(14) + 'With Name'.padStart(12) + 'Without Name'.padStart(15) + 'Total Raw'.padStart(12));
-  console.log('-'.repeat(53));
-  let totalWith = 0;
-  let totalWithout = 0;
-  for (const [cat, counts] of Object.entries(diagnostics)) {
-    const rawTotal = counts.withName + counts.withoutName;
-    totalWith += counts.withName;
-    totalWithout += counts.withoutName;
+    // Diagnostic report before name filtering
+    console.log('\n--- Raw Element Counts Before Name Filter ---');
+    console.log('Category'.padEnd(14) + 'With Name'.padStart(12) + 'Without Name'.padStart(15) + 'Total Raw'.padStart(12));
+    console.log('-'.repeat(53));
+    let totalWith = 0;
+    let totalWithout = 0;
+    for (const [cat, counts] of Object.entries(diagnostics)) {
+      const rawTotal = counts.withName + counts.withoutName;
+      totalWith += counts.withName;
+      totalWithout += counts.withoutName;
+      console.log(
+        cat.padEnd(14) +
+        String(counts.withName).padStart(12) +
+        String(counts.withoutName).padStart(15) +
+        String(rawTotal).padStart(12)
+      );
+    }
+    console.log('-'.repeat(53));
     console.log(
-      cat.padEnd(14) +
-      String(counts.withName).padStart(12) +
-      String(counts.withoutName).padStart(15) +
-      String(rawTotal).padStart(12)
+      'Total'.padEnd(14) +
+      String(totalWith).padStart(12) +
+      String(totalWithout).padStart(15) +
+      String(totalWith + totalWithout).padStart(12)
     );
   }
-  console.log('-'.repeat(53));
-  console.log(
-    'Total'.padEnd(14) +
-    String(totalWith).padStart(12) +
-    String(totalWithout).padStart(15) +
-    String(totalWith + totalWithout).padStart(12)
-  );
 
   const manualPois = loadManualPois();
   if (manualPois.length > 0) {
