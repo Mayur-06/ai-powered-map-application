@@ -18,6 +18,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMapStore, MAPBOX_STYLES } from '@/lib/store/mapStore';
 import SearchBar from '@/components/map/SearchBar';
 import RouteLayer from '@/components/map/RouteLayer';
+import PoiLayer from '@/components/map/PoiLayer';
+import Legend from '@/components/map/Legend';
 import DirectionsPanel from '@/components/map/DirectionsPanel';
 import NavPanel from '@/components/map/NavPanel';
 import { usePosition } from '@/lib/store/usePosition';
@@ -436,6 +438,9 @@ export default function MapView() {
             </div>
           </Popup>
         )}
+        {/* POI clustered layer */}
+        <PoiLayer />
+
         {/* Route layer */}
         <RouteLayer />
 
@@ -455,6 +460,9 @@ export default function MapView() {
           </Marker>
         )}
       </Map>
+
+      {/* Category legend */}
+      <Legend />
 
       {/* Navigation panel or Directions panel */}
       {isNavigating ? <NavPanel /> : <DirectionsPanel />}

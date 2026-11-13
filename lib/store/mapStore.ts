@@ -32,12 +32,14 @@ export interface Poi {
   id: string;
   name: string;
   category: string;
+  lng: number;
+  lat: number;
+  rating?: number | null;
   description?: string | null;
   address?: string | null;
-  rating?: number | null;
   price_level?: number | null;
-  longitude: number;
-  latitude: number;
+  longitude?: number;
+  latitude?: number;
   hours?: Record<string, unknown> | null;
   summary?: Record<string, unknown> | null;
 }
@@ -49,6 +51,8 @@ export interface MapState {
   viewState: ViewState;
   markers: MarkerItem[];
   selectedPoi: Poi | null;
+  pois: Poi[];
+  hiddenCategories: string[];
   route: RouteResult | null;
   routeMode: RouteMode;
   mapStyle: MapStyleMode;
@@ -58,6 +62,8 @@ export interface MapState {
   updateViewState: (patch: Partial<ViewState>) => void;
   setMarkers: (markers: MarkerItem[]) => void;
   setSelectedPoi: (poi: Poi | null) => void;
+  setPois: (pois: Poi[]) => void;
+  toggleCategory: (categoryId: string) => void;
   setRoute: (route: RouteResult | null) => void;
   clearRoute: () => void;
   setRouteMode: (mode: RouteMode) => void;
@@ -85,6 +91,8 @@ export const useMapStore = create<MapState>((set) => ({
   viewState: INITIAL_VIEW_STATE,
   markers: [],
   selectedPoi: null,
+  pois: [],
+  hiddenCategories: [],
   route: null,
   routeMode: 'drive',
   mapStyle: 'streets',
@@ -95,6 +103,13 @@ export const useMapStore = create<MapState>((set) => ({
     set((state) => ({ viewState: { ...state.viewState, ...patch } })),
   setMarkers: (markers) => set({ markers }),
   setSelectedPoi: (poi) => set({ selectedPoi: poi }),
+  setPois: (pois) => set({ pois }),
+  toggleCategory: (categoryId) =>
+    set((state) => ({
+      hiddenCategories: state.hiddenCategories.includes(categoryId)
+        ? state.hiddenCategories.filter((id) => id !== categoryId)
+        : [...state.hiddenCategories, categoryId],
+    })),
   setRoute: (route) => set({ route }),
   clearRoute: () => set({ route: null, isNavigating: false }),
   setRouteMode: (routeMode) => set({ routeMode }),
