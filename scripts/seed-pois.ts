@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { z } from 'zod';
 import { createServerClient } from '../lib/supabase/server';
 
 interface OverpassElement {
@@ -30,7 +33,7 @@ export interface PoiRow {
   summary: null;
 }
 
-// Bounding box for Greater Noida (confirmed wider bbox)
+// Bounding box for Greater Noida
 // south, west, north, east
 const BBOX = {
   south: 28.380,
@@ -45,7 +48,10 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.kumi.systems/api/interpreter',
 ];
 
-const USER_AGENT = 'GreaterNoidaMapSeed/1.0 (https://github.com/Mayur-06/ai-powered-map-application; mayur06dt@gmail.com)';
+const contact = process.env.OVERPASS_CONTACT?.trim();
+const USER_AGENT = contact
+  ? `GreaterNoidaMapSeed/1.0 (${contact})`
+  : 'GreaterNoidaMapSeed/1.0';
 
 function mapCategory(tags: Record<string, string>): string | null {
   const amenity = tags.amenity;
@@ -109,6 +115,37 @@ function mapCategory(tags: Record<string, string>): string | null {
   return null;
 }
 
+function resolvePoiName(tags: Record<string, string>, category: string): string | null {
+  const rawName = tags.name?.trim();
+  if (rawName) return rawName;
+
+  // For bank_atm and pharmacy ONLY: fallback to brand, operator, name:en
+  if (category === 'bank_atm' || category === 'pharmacy') {
+    const base = tags.brand?.trim() || tags.operator?.trim() || tags['name:en']?.trim() || null;
+    if (!base) return null;
+
+    if (category === 'bank_atm') {
+      const isAtm = tags.amenity === 'atm' || tags.atm === 'yes';
+      if (isAtm && !/\batm\b/i.test(base)) {
+        return `${base} ATM`;
+      }
+      if (!isAtm && !/\bbank\b/i.test(base) && !/\batm\b/i.test(base)) {
+        return `${base} Bank`;
+      }
+      return base;
+    }
+
+    if (category === 'pharmacy') {
+      if (!/\b(pharmacy|chemist|medicos|medical)\b/i.test(base)) {
+        return `${base} Pharmacy`;
+      }
+      return base;
+    }
+  }
+
+  return null;
+}
+
 function extractAddress(tags: Record<string, string>): string | null {
   if (tags['addr:full'] && tags['addr:full'].trim()) {
     return tags['addr:full'].trim();
@@ -141,16 +178,16 @@ function buildOverpassQuery(bbox: typeof BBOX): string {
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
   return `[out:json][timeout:60];
 (
-  node["amenity"~"^(cafe|restaurant|fast_food|food_court|pharmacy|bank|atm|fuel|hospital|clinic|doctors)$"]["name"](${bboxStr});
-  way["amenity"~"^(cafe|restaurant|fast_food|food_court|pharmacy|bank|atm|fuel|hospital|clinic|doctors)$"]["name"](${bboxStr});
-  node["shop"~"^(supermarket|mall|convenience|department_store|chemist|general|bakery)$"]["name"](${bboxStr});
-  way["shop"~"^(supermarket|mall|convenience|department_store|chemist|general|bakery)$"]["name"](${bboxStr});
-  node["healthcare"~"^(pharmacy|hospital|clinic)$"]["name"](${bboxStr});
-  way["healthcare"~"^(pharmacy|hospital|clinic)$"]["name"](${bboxStr});
-  node["atm"="yes"]["name"](${bboxStr});
-  way["atm"="yes"]["name"](${bboxStr});
-  node["leisure"~"^(park|garden)$"]["name"](${bboxStr});
-  way["leisure"~"^(park|garden)$"]["name"](${bboxStr});
+  node["amenity"~"^(cafe|restaurant|fast_food|food_court|pharmacy|bank|atm|fuel|hospital|clinic|doctors)$"](${bboxStr});
+  way["amenity"~"^(cafe|restaurant|fast_food|food_court|pharmacy|bank|atm|fuel|hospital|clinic|doctors)$"](${bboxStr});
+  node["shop"~"^(supermarket|mall|convenience|department_store|chemist|general|bakery)$"](${bboxStr});
+  way["shop"~"^(supermarket|mall|convenience|department_store|chemist|general|bakery)$"](${bboxStr});
+  node["healthcare"~"^(pharmacy|hospital|clinic)$"](${bboxStr});
+  way["healthcare"~"^(pharmacy|hospital|clinic)$"](${bboxStr});
+  node["atm"="yes"](${bboxStr});
+  way["atm"="yes"](${bboxStr});
+  node["leisure"~"^(park|garden)$"](${bboxStr});
+  way["leisure"~"^(park|garden)$"](${bboxStr});
 );
 out center;`;
 }
@@ -166,7 +203,6 @@ async function fetchOverpassWithRetry(query: string, timeoutMs = 60000): Promise
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': USER_AGENT,
-          'Referer': 'https://github.com/Mayur-06/ai-powered-map-application',
           'Accept': 'application/json',
         },
         body: 'data=' + encodeURIComponent(query),
@@ -191,24 +227,109 @@ async function fetchOverpassWithRetry(query: string, timeoutMs = 60000): Promise
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.warn(`Primary Overpass request failed (${errorMsg}). Retrying once after 5s backoff...`);
-    // Wait 5 seconds before retry
     await new Promise((resolve) => setTimeout(resolve, 5000));
     return await tryFetch(primaryEndpoint);
   }
 }
 
-export function parseElementsToPois(elements: OverpassElement[]): PoiRow[] {
+function loadManualPois(): PoiRow[] {
+  const filePath = path.resolve(process.cwd(), 'data/manual-pois.json');
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  try {
+    const rawContent = fs.readFileSync(filePath, 'utf-8');
+    if (!rawContent.trim()) {
+      return [];
+    }
+
+    const manualPoiSchema = z.array(
+      z.object({
+        name: z.string().min(1),
+        category: z.enum([
+          'cafe',
+          'restaurant',
+          'pharmacy',
+          'bank_atm',
+          'fuel',
+          'park',
+          'hospital',
+          'shopping',
+        ]),
+        lng: z.number(),
+        lat: z.number(),
+        address: z.string().optional(),
+      })
+    );
+
+    const json = JSON.parse(rawContent);
+    const parsed = manualPoiSchema.parse(json);
+
+    const slugify = (text: string) =>
+      text
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+    return parsed.map((p, index) => {
+      const slug = slugify(p.name) || 'poi';
+      return {
+        osm_id: `manual/${slug}-${index}`,
+        name: p.name.trim(),
+        category: p.category,
+        description: null,
+        geom: `SRID=4326;POINT(${p.lng} ${p.lat})`,
+        address: p.address?.trim() ?? null,
+        rating: null,
+        price_level: null,
+        hours: null,
+        embedding: null,
+        summary: null,
+      };
+    });
+  } catch (err) {
+    console.warn(`Warning: Could not parse data/manual-pois.json: ${err instanceof Error ? err.message : err}`);
+    return [];
+  }
+}
+
+export function parseElementsToPois(elements: OverpassElement[]): {
+  pois: PoiRow[];
+  diagnostics: Record<string, { withName: number; withoutName: number }>;
+} {
   const seenOsmIds = new Set<string>();
   const pois: PoiRow[] = [];
 
-  for (const el of elements) {
-    if (!el.tags || !el.tags.name) continue;
+  const diagnostics: Record<string, { withName: number; withoutName: number }> = {
+    cafe: { withName: 0, withoutName: 0 },
+    restaurant: { withName: 0, withoutName: 0 },
+    pharmacy: { withName: 0, withoutName: 0 },
+    bank_atm: { withName: 0, withoutName: 0 },
+    fuel: { withName: 0, withoutName: 0 },
+    park: { withName: 0, withoutName: 0 },
+    hospital: { withName: 0, withoutName: 0 },
+    shopping: { withName: 0, withoutName: 0 },
+  };
 
-    const name = el.tags.name.trim();
-    if (!name) continue;
+  for (const el of elements) {
+    if (!el.tags) continue;
 
     const category = mapCategory(el.tags);
     if (!category) continue;
+
+    // Diagnostic tracking BEFORE name filter
+    const hasExplicitName = Boolean(el.tags.name?.trim());
+    if (diagnostics[category]) {
+      if (hasExplicitName) {
+        diagnostics[category].withName++;
+      } else {
+        diagnostics[category].withoutName++;
+      }
+    }
+
+    const resolvedName = resolvePoiName(el.tags, category);
+    if (!resolvedName) continue;
 
     let lat: number | undefined;
     let lng: number | undefined;
@@ -232,7 +353,7 @@ export function parseElementsToPois(elements: OverpassElement[]): PoiRow[] {
 
     pois.push({
       osm_id: osmId,
-      name,
+      name: resolvedName,
       category,
       description: null,
       geom: `SRID=4326;POINT(${lng} ${lat})`,
@@ -245,7 +366,7 @@ export function parseElementsToPois(elements: OverpassElement[]): PoiRow[] {
     });
   }
 
-  return pois;
+  return { pois, diagnostics };
 }
 
 async function main() {
@@ -253,11 +374,44 @@ async function main() {
 
   console.log(`Starting POI seed script for Greater Noida.`);
   console.log(`Bounding Box: south=${BBOX.south}, west=${BBOX.west}, north=${BBOX.north}, east=${BBOX.east}`);
+  console.log(`User-Agent: ${USER_AGENT}`);
   console.log(`Mode: ${isDryRun ? 'DRY-RUN (read-only, no database writes)' : 'LIVE SEED'}`);
 
   const query = buildOverpassQuery(BBOX);
   const data = await fetchOverpassWithRetry(query);
-  const pois = parseElementsToPois(data.elements || []);
+  const { pois: osmPois, diagnostics } = parseElementsToPois(data.elements || []);
+
+  // Diagnostic report before name filtering
+  console.log('\n--- Raw Element Counts Before Name Filter ---');
+  console.log('Category'.padEnd(14) + 'With Name'.padStart(12) + 'Without Name'.padStart(15) + 'Total Raw'.padStart(12));
+  console.log('-'.repeat(53));
+  let totalWith = 0;
+  let totalWithout = 0;
+  for (const [cat, counts] of Object.entries(diagnostics)) {
+    const rawTotal = counts.withName + counts.withoutName;
+    totalWith += counts.withName;
+    totalWithout += counts.withoutName;
+    console.log(
+      cat.padEnd(14) +
+      String(counts.withName).padStart(12) +
+      String(counts.withoutName).padStart(15) +
+      String(rawTotal).padStart(12)
+    );
+  }
+  console.log('-'.repeat(53));
+  console.log(
+    'Total'.padEnd(14) +
+    String(totalWith).padStart(12) +
+    String(totalWithout).padStart(15) +
+    String(totalWith + totalWithout).padStart(12)
+  );
+
+  const manualPois = loadManualPois();
+  if (manualPois.length > 0) {
+    console.log(`\nLoaded ${manualPois.length} manual POIs from data/manual-pois.json`);
+  }
+
+  const allPois = [...osmPois, ...manualPois];
 
   const categoryCounts: Record<string, number> = {
     cafe: 0,
@@ -270,24 +424,25 @@ async function main() {
     shopping: 0,
   };
 
-  for (const poi of pois) {
+  for (const poi of allPois) {
     if (categoryCounts[poi.category] !== undefined) {
       categoryCounts[poi.category]++;
     }
   }
 
-  console.log('\n--- POI Category Counts ---');
+  console.log('\n--- Valid POI Category Counts (Post Name-Filter & Fallbacks + Manual) ---');
   for (const [cat, count] of Object.entries(categoryCounts)) {
     console.log(`  ${cat.padEnd(12)}: ${count}`);
   }
-  console.log(`Total valid POIs: ${pois.length}`);
+  console.log(`Total valid POIs: ${allPois.length}`);
 
   if (isDryRun) {
-    console.log('\n--- 5 Sample Rows (Dry Run, including Pharmacy if available) ---');
-    // Ensure we include at least one pharmacy in samples if available
-    const pharmacyPoi = pois.find((p) => p.category === 'pharmacy');
-    const otherSamples = pois.filter((p) => p !== pharmacyPoi).slice(0, pharmacyPoi ? 4 : 5);
-    const samples = pharmacyPoi ? [pharmacyPoi, ...otherSamples] : otherSamples;
+    console.log('\n--- 5 Sample Rows (Dry Run, prioritizing bank_atm and pharmacy) ---');
+    const bankAtmSample = allPois.find((p) => p.category === 'bank_atm');
+    const pharmacySample = allPois.find((p) => p.category === 'pharmacy');
+    const priority = [bankAtmSample, pharmacySample].filter((p): p is PoiRow => Boolean(p));
+    const others = allPois.filter((p) => !priority.includes(p)).slice(0, 5 - priority.length);
+    const samples = [...priority, ...others];
 
     samples.forEach((sample, i) => {
       console.log(`\nSample #${i + 1} (${sample.category}):`);
@@ -302,8 +457,8 @@ async function main() {
   const batchSize = 100;
   let insertedTotal = 0;
 
-  for (let i = 0; i < pois.length; i += batchSize) {
-    const batch = pois.slice(i, i + batchSize);
+  for (let i = 0; i < allPois.length; i += batchSize) {
+    const batch = allPois.slice(i, i + batchSize);
     const { error } = await supabase
       .from('pois')
       .upsert(batch, { onConflict: 'osm_id' });
@@ -313,7 +468,7 @@ async function main() {
     }
 
     insertedTotal += batch.length;
-    console.log(`Upserted batch ${Math.floor(i / batchSize) + 1}: ${batch.length} rows (Progress: ${insertedTotal}/${pois.length})`);
+    console.log(`Upserted batch ${Math.floor(i / batchSize) + 1}: ${batch.length} rows (Progress: ${insertedTotal}/${allPois.length})`);
   }
 
   console.log(`\n[Live Seed Complete] Successfully upserted ${insertedTotal} POIs into the 'pois' table.`);
