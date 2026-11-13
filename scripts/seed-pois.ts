@@ -30,13 +30,13 @@ export interface PoiRow {
   summary: null;
 }
 
-// Bounding box for Greater Noida (Knowledge Park, Pari Chowk)
+// Bounding box for Greater Noida (confirmed wider bbox)
 // south, west, north, east
 const BBOX = {
-  south: 28.425,
-  west: 77.45,
-  north: 28.515,
-  east: 77.55,
+  south: 28.380,
+  west: 77.400,
+  north: 28.600,
+  east: 77.580,
 };
 
 const OVERPASS_ENDPOINTS = [
@@ -51,15 +51,60 @@ function mapCategory(tags: Record<string, string>): string | null {
   const amenity = tags.amenity;
   const shop = tags.shop;
   const leisure = tags.leisure;
+  const healthcare = tags.healthcare;
 
+  // Pharmacy: amenity=pharmacy, shop=chemist, healthcare=pharmacy
+  if (
+    amenity === 'pharmacy' ||
+    shop === 'chemist' ||
+    healthcare === 'pharmacy'
+  ) {
+    return 'pharmacy';
+  }
+
+  // Cafe
   if (amenity === 'cafe') return 'cafe';
-  if (amenity === 'restaurant' || amenity === 'fast_food') return 'restaurant';
-  if (amenity === 'pharmacy') return 'pharmacy';
-  if (amenity === 'bank' || amenity === 'atm') return 'bank_atm';
+
+  // Restaurant: fast_food and food_court map to restaurant, not cafe
+  if (amenity === 'restaurant' || amenity === 'fast_food' || amenity === 'food_court') {
+    return 'restaurant';
+  }
+
+  // Bank & ATM
+  if (amenity === 'bank' || amenity === 'atm' || tags.atm === 'yes') {
+    return 'bank_atm';
+  }
+
+  // Fuel
   if (amenity === 'fuel') return 'fuel';
-  if (amenity === 'hospital' || amenity === 'clinic') return 'hospital';
-  if (['supermarket', 'mall', 'convenience', 'department_store'].includes(shop)) return 'shopping';
-  if (leisure === 'park') return 'park';
+
+  // Hospital & clinics
+  if (
+    amenity === 'hospital' ||
+    amenity === 'clinic' ||
+    amenity === 'doctors' ||
+    healthcare === 'hospital' ||
+    healthcare === 'clinic'
+  ) {
+    return 'hospital';
+  }
+
+  // Shopping
+  if (
+    [
+      'supermarket',
+      'mall',
+      'convenience',
+      'department_store',
+      'general',
+      'bakery',
+    ].includes(shop)
+  ) {
+    return 'shopping';
+  }
+
+  // Park
+  if (leisure === 'park' || leisure === 'garden') return 'park';
 
   return null;
 }
@@ -96,12 +141,16 @@ function buildOverpassQuery(bbox: typeof BBOX): string {
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
   return `[out:json][timeout:60];
 (
-  node["amenity"~"^(cafe|restaurant|fast_food|pharmacy|bank|atm|fuel|hospital|clinic)$"]["name"](${bboxStr});
-  way["amenity"~"^(cafe|restaurant|fast_food|pharmacy|bank|atm|fuel|hospital|clinic)$"]["name"](${bboxStr});
-  node["shop"~"^(supermarket|mall|convenience|department_store)$"]["name"](${bboxStr});
-  way["shop"~"^(supermarket|mall|convenience|department_store)$"]["name"](${bboxStr});
-  node["leisure"="park"]["name"](${bboxStr});
-  way["leisure"="park"]["name"](${bboxStr});
+  node["amenity"~"^(cafe|restaurant|fast_food|food_court|pharmacy|bank|atm|fuel|hospital|clinic|doctors)$"]["name"](${bboxStr});
+  way["amenity"~"^(cafe|restaurant|fast_food|food_court|pharmacy|bank|atm|fuel|hospital|clinic|doctors)$"]["name"](${bboxStr});
+  node["shop"~"^(supermarket|mall|convenience|department_store|chemist|general|bakery)$"]["name"](${bboxStr});
+  way["shop"~"^(supermarket|mall|convenience|department_store|chemist|general|bakery)$"]["name"](${bboxStr});
+  node["healthcare"~"^(pharmacy|hospital|clinic)$"]["name"](${bboxStr});
+  way["healthcare"~"^(pharmacy|hospital|clinic)$"]["name"](${bboxStr});
+  node["atm"="yes"]["name"](${bboxStr});
+  way["atm"="yes"]["name"](${bboxStr});
+  node["leisure"~"^(park|garden)$"]["name"](${bboxStr});
+  way["leisure"~"^(park|garden)$"]["name"](${bboxStr});
 );
 out center;`;
 }
@@ -141,11 +190,10 @@ async function fetchOverpassWithRetry(query: string, timeoutMs = 60000): Promise
     return await tryFetch(primaryEndpoint);
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.warn(`Primary Overpass request failed (${errorMsg}). Retrying once with fallback endpoint...`);
-    // Wait 3 seconds before retry
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    const fallbackEndpoint = OVERPASS_ENDPOINTS[1];
-    return await tryFetch(fallbackEndpoint);
+    console.warn(`Primary Overpass request failed (${errorMsg}). Retrying once after 5s backoff...`);
+    // Wait 5 seconds before retry
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    return await tryFetch(primaryEndpoint);
   }
 }
 
@@ -235,10 +283,14 @@ async function main() {
   console.log(`Total valid POIs: ${pois.length}`);
 
   if (isDryRun) {
-    console.log('\n--- 5 Sample Rows (Dry Run) ---');
-    const samples = pois.slice(0, 5);
+    console.log('\n--- 5 Sample Rows (Dry Run, including Pharmacy if available) ---');
+    // Ensure we include at least one pharmacy in samples if available
+    const pharmacyPoi = pois.find((p) => p.category === 'pharmacy');
+    const otherSamples = pois.filter((p) => p !== pharmacyPoi).slice(0, pharmacyPoi ? 4 : 5);
+    const samples = pharmacyPoi ? [pharmacyPoi, ...otherSamples] : otherSamples;
+
     samples.forEach((sample, i) => {
-      console.log(`\nSample #${i + 1}:`);
+      console.log(`\nSample #${i + 1} (${sample.category}):`);
       console.log(JSON.stringify(sample, null, 2));
     });
     console.log('\n[Dry Run Complete] No records were written to the database.');
@@ -273,4 +325,3 @@ if (process.argv[1]?.includes('seed-pois')) {
     process.exit(1);
   });
 }
-
