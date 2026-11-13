@@ -11,7 +11,12 @@
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@supabase/supabase-js": "^2.119.0",
+    "@turf/along": "^7.4.0",
     "@turf/bbox": "^7.4.0",
+    "@turf/distance": "^7.4.0",
+    "@turf/helpers": "^7.4.0",
+    "@turf/length": "^7.4.0",
+    "@turf/nearest-point-on-line": "^7.4.0",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.5.2",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Map, {
   Marker,
   Popup,
@@ -19,8 +19,10 @@ import { useMapStore, MAPBOX_STYLES } from '@/lib/store/mapStore';
 import SearchBar from '@/components/map/SearchBar';
 import RouteLayer from '@/components/map/RouteLayer';
 import DirectionsPanel from '@/components/map/DirectionsPanel';
+import NavPanel from '@/components/map/NavPanel';
+import { usePosition } from '@/lib/store/usePosition';
 import type { PlaceResult } from '@/lib/mapbox/search';
-import { Sun, Moon, AlertCircle, X, MapPin, Loader2 } from 'lucide-react';
+import { Sun, Moon, AlertCircle, X, MapPin, Loader2, Navigation } from 'lucide-react';
 
 export default function MapView() {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -32,6 +34,20 @@ export default function MapView() {
   const mapStyle = useMapStore((state) => state.mapStyle);
   const toggleMapStyle = useMapStore((state) => state.toggleMapStyle);
   const setUserLocation = useMapStore((state) => state.setUserLocation);
+  const isNavigating = useMapStore((state) => state.isNavigating);
+
+  const { position: currentPosition, isSimulating } = usePosition();
+
+  // Ease camera to follow simulated position (no rotation, no tilt)
+  useEffect(() => {
+    if (isSimulating && currentPosition && mapRef.current) {
+      mapRef.current.easeTo({
+        center: [currentPosition.lng, currentPosition.lat],
+        duration: 300,
+        essential: false,
+      });
+    }
+  }, [isSimulating, currentPosition]);
 
   const [locationError, setLocationError] = useState<string | null>(null);
   const [reversePopup, setReversePopup] = useState<{
@@ -422,10 +438,26 @@ export default function MapView() {
         )}
         {/* Route layer */}
         <RouteLayer />
+
+        {/* Distinct marker for simulated position */}
+        {isSimulating && currentPosition && (
+          <Marker
+            longitude={currentPosition.lng}
+            latitude={currentPosition.lat}
+            anchor="center"
+          >
+            <div className="relative flex items-center justify-center">
+              <span className="absolute h-8 w-8 animate-ping rounded-full bg-cyan-400 opacity-60" />
+              <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500 text-white shadow-md border-2 border-white dark:border-slate-900">
+                <Navigation className="h-3.5 w-3.5 fill-current" />
+              </div>
+            </div>
+          </Marker>
+        )}
       </Map>
 
-      {/* Directions panel */}
-      <DirectionsPanel />
+      {/* Navigation panel or Directions panel */}
+      {isNavigating ? <NavPanel /> : <DirectionsPanel />}
     </div>
   );
 }

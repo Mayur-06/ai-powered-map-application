@@ -33,9 +33,11 @@ export default function DirectionsPanel() {
   const userLocation = useMapStore((state) => state.userLocation);
   const route = useMapStore((state) => state.route);
   const routeMode = useMapStore((state) => state.routeMode);
+  const isNavigating = useMapStore((state) => state.isNavigating);
   const setRoute = useMapStore((state) => state.setRoute);
   const clearRoute = useMapStore((state) => state.clearRoute);
   const setRouteMode = useMapStore((state) => state.setRouteMode);
+  const startNavigation = useMapStore((state) => state.startNavigation);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -113,8 +115,8 @@ export default function DirectionsPanel() {
     [route, setRouteMode, handleFetchRoute]
   );
 
-  // Only render when a destination pin exists
-  if (!destinationMarker) {
+  // Only render when a destination pin exists and not currently navigating
+  if (!destinationMarker || isNavigating) {
     return null;
   }
 
@@ -215,7 +217,7 @@ export default function DirectionsPanel() {
               </div>
             </div>
 
-            {/* Clear route button */}
+            {/* Route actions: Clear route and Start navigation */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -226,6 +228,14 @@ export default function DirectionsPanel() {
                 className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 Clear route
+              </button>
+              <button
+                type="button"
+                onClick={() => startNavigation()}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
+              >
+                <Navigation className="h-3.5 w-3.5" />
+                <span>Start</span>
               </button>
             </div>
           </div>

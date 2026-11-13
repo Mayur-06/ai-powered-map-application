@@ -52,6 +52,7 @@ export interface MapState {
   route: RouteResult | null;
   routeMode: RouteMode;
   mapStyle: MapStyleMode;
+  isNavigating: boolean;
   setUserLocation: (location: UserLocation | null) => void;
   setViewState: (viewState: ViewState) => void;
   updateViewState: (patch: Partial<ViewState>) => void;
@@ -62,6 +63,8 @@ export interface MapState {
   setRouteMode: (mode: RouteMode) => void;
   setMapStyle: (style: MapStyleMode) => void;
   toggleMapStyle: () => void;
+  startNavigation: () => void;
+  stopNavigation: () => void;
 }
 
 export const MAPBOX_STYLES: Record<MapStyleMode, string> = {
@@ -85,6 +88,7 @@ export const useMapStore = create<MapState>((set) => ({
   route: null,
   routeMode: 'drive',
   mapStyle: 'streets',
+  isNavigating: false,
   setUserLocation: (location) => set({ userLocation: location }),
   setViewState: (viewState) => set({ viewState }),
   updateViewState: (patch) =>
@@ -92,11 +96,13 @@ export const useMapStore = create<MapState>((set) => ({
   setMarkers: (markers) => set({ markers }),
   setSelectedPoi: (poi) => set({ selectedPoi: poi }),
   setRoute: (route) => set({ route }),
-  clearRoute: () => set({ route: null }),
+  clearRoute: () => set({ route: null, isNavigating: false }),
   setRouteMode: (routeMode) => set({ routeMode }),
   setMapStyle: (mapStyle) => set({ mapStyle }),
   toggleMapStyle: () =>
     set((state) => ({
       mapStyle: state.mapStyle === 'streets' ? 'dark' : 'streets',
     })),
+  startNavigation: () => set({ isNavigating: true }),
+  stopNavigation: () => set({ isNavigating: false }),
 }));
