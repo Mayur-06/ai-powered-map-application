@@ -89,8 +89,17 @@ const getRouteInputSchema = z.object({
 
 const mapControlInputSchema = z.object({
   action: z
-    .enum(['flyTo', 'setStyle', 'toggleCategory'])
-    .describe('Map control action to perform: "flyTo" to move camera, "setStyle" to switch map style, or "toggleCategory" to show/hide category POIs'),
+    .enum([
+      'flyTo',
+      'setStyle',
+      'showOnlyCategory',
+      'showAllCategories',
+      'hideCategory',
+      'showCategory',
+    ])
+    .describe(
+      'Map control action to perform: "flyTo" to move camera, "setStyle" to switch map style, "showOnlyCategory" to show only one category and hide all others (e.g. "show only parks" -> showOnlyCategory), "showAllCategories" to show all categories, "hideCategory" to hide a category, or "showCategory" to show a specific category'
+    ),
   lng: z
     .number()
     .min(-180)
@@ -116,11 +125,7 @@ const mapControlInputSchema = z.object({
   category: z
     .enum(CATEGORY_VALUES)
     .optional()
-    .describe('Category identifier to toggle for toggleCategory'),
-  visible: z
-    .boolean()
-    .optional()
-    .describe('Optional boolean visibility state for toggleCategory (true to show, false to hide)'),
+    .describe('Category identifier for showOnlyCategory, hideCategory, or showCategory (e.g. "park", "hospital", "pharmacy")'),
 });
 
 const getUserContextInputSchema = z
@@ -307,7 +312,7 @@ export function createTools(context: ToolContext) {
 
     mapControl: tool({
       description:
-        'Control map camera (flyTo), map style (setStyle), or toggle category marker visibility (toggleCategory).',
+        'Control map camera (flyTo), map style (setStyle), or category POI visibility: showOnlyCategory (e.g. "show only parks"), showAllCategories, hideCategory, or showCategory.',
       inputSchema: mapControlInputSchema,
       execute: async (input) => {
         try {
@@ -335,15 +340,43 @@ export function createTools(context: ToolContext) {
             };
           }
 
-          if (input.action === 'toggleCategory') {
+          if (input.action === 'showOnlyCategory') {
             if (!input.category) {
-              return { error: 'toggleCategory action requires a category' };
+              return { error: 'showOnlyCategory action requires a category' };
             }
             return {
               ok: true,
-              action: 'toggleCategory' as const,
+              action: 'showOnlyCategory' as const,
               category: input.category,
-              ...(typeof input.visible === 'boolean' ? { visible: input.visible } : {}),
+            };
+          }
+
+          if (input.action === 'showAllCategories') {
+            return {
+              ok: true,
+              action: 'showAllCategories' as const,
+            };
+          }
+
+          if (input.action === 'hideCategory') {
+            if (!input.category) {
+              return { error: 'hideCategory action requires a category' };
+            }
+            return {
+              ok: true,
+              action: 'hideCategory' as const,
+              category: input.category,
+            };
+          }
+
+          if (input.action === 'showCategory') {
+            if (!input.category) {
+              return { error: 'showCategory action requires a category' };
+            }
+            return {
+              ok: true,
+              action: 'showCategory' as const,
+              category: input.category,
             };
           }
 

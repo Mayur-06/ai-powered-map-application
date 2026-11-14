@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { PaddingOptions } from 'mapbox-gl';
 import type { RouteResult, RouteMode, RouteStep, RouteGeometry, RouteManeuver } from '@/lib/mapbox/directions';
+import { CATEGORIES } from '@/lib/categories';
 
 export type { RouteResult, RouteMode, RouteStep, RouteGeometry, RouteManeuver };
 
@@ -64,6 +65,8 @@ export interface MapState {
   setSelectedPoi: (poi: Poi | null) => void;
   setPois: (pois: Poi[]) => void;
   toggleCategory: (categoryId: string) => void;
+  showOnlyCategory: (categoryId: string) => void;
+  showAllCategories: () => void;
   setRoute: (route: RouteResult | null) => void;
   clearRoute: () => void;
   setRouteMode: (mode: RouteMode) => void;
@@ -110,6 +113,11 @@ export const useMapStore = create<MapState>((set) => ({
         ? state.hiddenCategories.filter((id) => id !== categoryId)
         : [...state.hiddenCategories, categoryId],
     })),
+  showOnlyCategory: (categoryId) =>
+    set({
+      hiddenCategories: CATEGORIES.map((c) => c.id).filter((id) => id !== categoryId),
+    }),
+  showAllCategories: () => set({ hiddenCategories: [] }),
   setRoute: (route) => set({ route }),
   clearRoute: () => set({ route: null, isNavigating: false }),
   setRouteMode: (routeMode) => set({ routeMode }),

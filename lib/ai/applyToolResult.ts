@@ -1,6 +1,5 @@
 import { useMapStore, type MarkerItem, type RouteResult } from '@/lib/store/mapStore';
 import { getMapInstance } from '@/lib/mapRegistry';
-import { CATEGORIES } from '@/lib/categories';
 
 export interface CachedPlace {
   id: string;
@@ -39,13 +38,19 @@ interface GetRouteOutput {
 
 interface MapControlOutput {
   error?: string;
-  action?: 'flyTo' | 'setStyle' | 'toggleCategory';
+  action?:
+    | 'flyTo'
+    | 'setStyle'
+    | 'showOnlyCategory'
+    | 'showAllCategories'
+    | 'hideCategory'
+    | 'showCategory'
+    | 'toggleCategory';
   lng?: number;
   lat?: number;
   zoom?: number;
   style?: 'light' | 'dark';
   category?: string;
-  visible?: boolean;
 }
 
 const appliedToolCallIds = new Set<string>();
@@ -248,18 +253,22 @@ export async function applyToolResult(toolName: string, output: unknown): Promis
       } else if (out.action === 'setStyle') {
         const styleMode = out.style === 'dark' ? 'dark' : 'streets';
         useMapStore.getState().setMapStyle(styleMode);
-      } else if (out.action === 'toggleCategory' && out.category) {
+      } else if (out.action === 'showOnlyCategory' && out.category) {
+        useMapStore.getState().showOnlyCategory(out.category);
+      } else if (out.action === 'showAllCategories') {
+        useMapStore.getState().showAllCategories();
+      } else if (out.action === 'hideCategory' && out.category) {
         const hidden = useMapStore.getState().hiddenCategories;
-        if (out.visible === true && hidden.length === 0) {
-          // If all categories are currently visible and user requested to show only this category,
-          // hide all other categories so only this category remains visible
-          const others = CATEGORIES.map((c) => c.id).filter((id) => id !== out.category);
-          for (const other of others) {
-            useMapStore.getState().toggleCategory(other);
-          }
-        } else {
+        if (!hidden.includes(out.category)) {
           useMapStore.getState().toggleCategory(out.category);
         }
+      } else if (out.action === 'showCategory' && out.category) {
+        const hidden = useMapStore.getState().hiddenCategories;
+        if (hidden.includes(out.category)) {
+          useMapStore.getState().toggleCategory(out.category);
+        }
+      } else if (out.action === 'toggleCategory' && out.category) {
+        useMapStore.getState().toggleCategory(out.category);
       }
       break;
     }
