@@ -11,4 +11,5 @@ This file tracks features, ideas, and enhancements deferred to maintain scope di
 - Revisit Turbopack and remove --webpack after the hackathon,
 - Remove or protect /api/health/db before final freeze.
 - Review text is synthetic sample data generated for demonstration purposes, and POI ratings are derived from these sample reviews.
+- Add per-IP rate limiting to /api/chat before the demo is public.
 
