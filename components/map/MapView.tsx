@@ -22,6 +22,7 @@ import PoiLayer from '@/components/map/PoiLayer';
 import Legend from '@/components/map/Legend';
 import DirectionsPanel from '@/components/map/DirectionsPanel';
 import NavPanel from '@/components/map/NavPanel';
+import PoiSheet from '@/components/map/PoiSheet';
 import { usePosition } from '@/lib/store/usePosition';
 import type { PlaceResult } from '@/lib/mapbox/search';
 import { Sun, Moon, AlertCircle, X, MapPin, Loader2, Navigation } from 'lucide-react';
@@ -466,6 +467,9 @@ export default function MapView() {
 
       {/* Navigation panel or Directions panel */}
       {isNavigating ? <NavPanel /> : <DirectionsPanel />}
+
+      {/* POI detail sheet */}
+      <PoiSheet />
     </div>
   );
 }

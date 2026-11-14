@@ -143,6 +143,7 @@ export default function PoiLayer() {
     };
 
     const onPoiClick = (e: MapMouseEvent) => {
+      if (useMapStore.getState().isNavigating) return;
       const features = map.queryRenderedFeatures(e.point, {
         layers: ['unclustered-pois'],
       });
