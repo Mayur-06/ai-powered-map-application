@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { streamText, convertToModelMessages, APICallError, type UIMessage } from 'ai';
+import {
+  streamText,
+  convertToModelMessages,
+  stepCountIs,
+  APICallError,
+  type UIMessage,
+} from 'ai';
 import { z } from 'zod';
 import { getModel } from '@/lib/ai/model';
 import { buildSystemPrompt } from '@/lib/ai/prompts';
+import { createTools } from '@/lib/ai/tools';
 
 const textPartSchema = z.object({
   type: z.literal('text'),
@@ -103,12 +110,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const model = getModel();
-    const modelMessages = await convertToModelMessages(normalizedMessages);
+    const tools = createTools({
+      userLocation: parsed.data.context?.userLocation ?? null,
+      bounds: parsed.data.context?.bounds ?? null,
+    });
+    const modelMessages = await convertToModelMessages(normalizedMessages, {
+      tools,
+    });
 
     const result = streamText({
       model,
       system: buildSystemPrompt(parsed.data.context),
       messages: modelMessages,
+      tools,
+      stopWhen: stepCountIs(4),
       maxOutputTokens: 400,
       onError: () => 'An error occurred while generating the response. Please try again.',
     });

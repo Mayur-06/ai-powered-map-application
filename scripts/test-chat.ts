@@ -3,13 +3,72 @@ interface ChatContext {
   bounds: { west: number; south: number; east: number; north: number } | null;
 }
 
-const sampleContext: ChatContext = {
-  userLocation: { lng: 77.503, lat: 28.4744 },
-  bounds: { west: 77.45, south: 28.43, east: 77.55, north: 28.52 },
+const pariChowkContext: ChatContext = {
+  userLocation: { lng: 77.5081, lat: 28.4631 },
+  bounds: { west: 77.46, south: 28.42, east: 77.56, north: 28.51 },
 };
+
+interface PlaceResultItem {
+  id: string;
+  name: string;
+  category: string;
+  rating: number | null;
+  distanceM: number;
+  lng: number;
+  lat: number;
+}
+
+interface DestinationResult {
+  id: string;
+  name: string;
+  lng?: number;
+  lat?: number;
+}
+
+interface ToolOutputSummary {
+  error?: string;
+  places?: PlaceResultItem[];
+  destination?: DestinationResult;
+  distanceM?: number;
+  durationS?: number;
+  mode?: string;
+  centerUsed?: string;
+  note?: string;
+  ok?: boolean;
+  action?: string;
+  userLocation?: unknown;
+  bounds?: unknown;
+}
+
+function summarizeToolOutput(output: unknown): string {
+  if (!output || typeof output !== 'object') return String(output);
+  const out = output as ToolOutputSummary;
+  if (out.error) return `Error: ${out.error}`;
+  if (Array.isArray(out.places)) {
+    const list = out.places
+      .map((p) => `${p.name} (${p.distanceM}m${p.rating ? `, ${p.rating}★` : ''})`)
+      .join(', ');
+    return `${out.places.length} place(s) [${list || 'none'}] (center: ${out.centerUsed}${out.note ? `, note: "${out.note}"` : ''})`;
+  }
+  if (out.destination) {
+    const durMin = out.durationS !== undefined ? `~${Math.round(out.durationS / 60)} min` : '';
+    return `Route to ${out.destination.name}: ${out.distanceM}m, ${durMin} (${out.mode || 'drive'})`;
+  }
+  if (out.ok && out.action) {
+    return `MapControl "${out.action}" ok: ${JSON.stringify(output)}`;
+  }
+  if (out.userLocation !== undefined) {
+    return `UserContext: location=${JSON.stringify(out.userLocation)}`;
+  }
+  return JSON.stringify(output).slice(0, 160);
+}
 
 async function streamQuery(prompt: string, context: ChatContext): Promise<string> {
   const url = process.env.TEST_CHAT_URL || 'http://localhost:3000/api/chat';
+
+  console.log(`\n========================================`);
+  console.log(`Query: "${prompt}"`);
+  console.log(`========================================`);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -41,6 +100,30 @@ async function streamQuery(prompt: string, context: ChatContext): Promise<string
   let buffer = '';
   let fullText = '';
 
+  const handleLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data: ')) return;
+    const data = trimmed.slice(6).trim();
+    if (data === '[DONE]') return;
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.type === 'tool-input-available') {
+        console.log(`\n[Tool Call] ${parsed.toolName}`);
+        console.log(`  Input: ${JSON.stringify(parsed.input)}`);
+      } else if (parsed.type === 'tool-output-available') {
+        console.log(`[Tool Result] ${summarizeToolOutput(parsed.output)}`);
+      } else if (parsed.type === 'tool-input-error' || parsed.type === 'tool-output-error') {
+        console.log(`[Tool Error] ${parsed.errorText || 'Unknown tool error'}`);
+      } else if (parsed.type === 'text-delta' && typeof parsed.delta === 'string') {
+        fullText += parsed.delta;
+      } else if (parsed.type === 'error') {
+        console.log(`[Stream Error] ${parsed.errorText}`);
+      }
+    } catch {
+      // Skip unparseable line
+    }
+  };
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -50,53 +133,46 @@ async function streamQuery(prompt: string, context: ChatContext): Promise<string
     buffer = lines.pop() ?? '';
 
     for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data: ')) continue;
-      const data = trimmed.slice(6).trim();
-      if (data === '[DONE]') continue;
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.type === 'text-delta' && typeof parsed.delta === 'string') {
-          fullText += parsed.delta;
-          process.stdout.write(parsed.delta);
-        }
-      } catch {
-        // Skip unparseable lines
-      }
+      handleLine(line);
     }
   }
 
-  if (buffer.trim().startsWith('data: ')) {
-    const data = buffer.trim().slice(6).trim();
-    if (data !== '[DONE]') {
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.type === 'text-delta' && typeof parsed.delta === 'string') {
-          fullText += parsed.delta;
-          process.stdout.write(parsed.delta);
-        }
-      } catch {
-        // Skip unparseable lines
-      }
-    }
+  if (buffer.trim().length > 0) {
+    handleLine(buffer);
   }
 
-  process.stdout.write('\n');
-  return fullText;
+  console.log(`\n[Final Text]`);
+  console.log(fullText.trim());
+  return fullText.trim();
+}
+
+async function sleep(ms: number) {
+  console.log(`\n(Pausing ${ms / 1000}s to observe rate limits...)`);
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function main() {
-  console.log('=== Test 1: "hello, who are you?" ===');
-  const output1 = await streamQuery('hello, who are you?', sampleContext);
-  console.log(`[Test 1 Response Length: ${output1.length} chars]\n`);
+  console.log('Starting Day 4.2 Chat Tools Test...');
+  console.log(`Context: Pari Chowk (lng=${pariChowkContext.userLocation?.lng}, lat=${pariChowkContext.userLocation?.lat})\n`);
 
-  console.log('=== Test 2: "find me a cafe near me" ===');
-  const output2 = await streamQuery('find me a cafe near me', sampleContext);
-  console.log(`[Test 2 Response Length: ${output2.length} chars]\n`);
+  // Message 1
+  await streamQuery('find a cafe near me', pariChowkContext);
+  await sleep(15000);
 
-  console.log('=== Verification ===');
-  console.log('Query 1 received streamed response:', output1.length > 0 ? 'PASS' : 'FAIL');
-  console.log('Query 2 received streamed response:', output2.length > 0 ? 'PASS' : 'FAIL');
+  // Message 2
+  await streamQuery('take me to the nearest pharmacy', pariChowkContext);
+  await sleep(15000);
+
+  // Message 3
+  await streamQuery('is there a Starbucks near me?', pariChowkContext);
+  await sleep(15000);
+
+  // Message 4
+  await streamQuery('find a hospital within 500 metres', pariChowkContext);
+
+  console.log('\n========================================');
+  console.log('All 4 test queries finished.');
+  console.log('========================================');
 }
 
 main().catch((err) => {
