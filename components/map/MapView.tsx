@@ -25,6 +25,9 @@ import NavPanel from '@/components/map/NavPanel';
 import PoiSheet from '@/components/map/PoiSheet';
 import { usePosition } from '@/lib/store/usePosition';
 import type { PlaceResult } from '@/lib/mapbox/search';
+import { getCategoryInfo } from '@/lib/categories';
+import { registerMapInstance } from '@/lib/mapRegistry';
+import ChatPanel from '@/components/chat/ChatPanel';
 import { Sun, Moon, AlertCircle, X, MapPin, Loader2, Navigation } from 'lucide-react';
 
 export default function MapView() {
@@ -51,6 +54,16 @@ export default function MapView() {
       });
     }
   }, [isSimulating, currentPosition]);
+
+  // Register map instance for AI bridge and external controls
+  useEffect(() => {
+    if (mapRef.current) {
+      registerMapInstance(mapRef.current);
+    }
+    return () => {
+      registerMapInstance(null);
+    };
+  }, []);
 
   const [locationError, setLocationError] = useState<string | null>(null);
   const [reversePopup, setReversePopup] = useState<{
@@ -361,7 +374,10 @@ export default function MapView() {
       )}
 
       <Map
-        ref={mapRef}
+        ref={(inst) => {
+          mapRef.current = inst;
+          registerMapInstance(inst);
+        }}
         {...viewState}
         onMove={handleMove}
         onMoveStart={handleInteractionStart}
@@ -392,26 +408,49 @@ export default function MapView() {
         <ScaleControl position="bottom-left" />
 
         {/* Render markers from mapStore using react-map-gl Marker */}
-        {markers.map((marker) => (
-          <Marker
-            key={marker.id}
-            longitude={marker.longitude}
-            latitude={marker.latitude}
-            anchor="bottom"
-          >
-            <div className="flex flex-col items-center cursor-pointer group">
-              <div className="relative flex items-center justify-center">
-                <MapPin className="h-8 w-8 text-red-600 fill-red-500 drop-shadow-md transition-transform group-hover:scale-110" />
-                <span className="absolute top-2 h-2 w-2 rounded-full bg-white shadow-xs" />
+        {markers.map((marker) => {
+          const categoryInfo = marker.category ? getCategoryInfo(marker.category) : undefined;
+          const pinColor = categoryInfo?.color;
+
+          return (
+            <Marker
+              key={marker.id}
+              longitude={marker.longitude}
+              latitude={marker.latitude}
+              anchor="bottom"
+            >
+              <div
+                className="flex flex-col items-center cursor-pointer group"
+                onClick={() => {
+                  useMapStore.getState().setSelectedPoi({
+                    id: marker.id,
+                    name: marker.title || 'Selected Place',
+                    category: marker.category || 'other',
+                    lng: marker.longitude,
+                    lat: marker.latitude,
+                  });
+                }}
+              >
+                <div className="relative flex items-center justify-center">
+                  <MapPin
+                    className="h-8 w-8 drop-shadow-md transition-transform group-hover:scale-110"
+                    style={
+                      pinColor
+                        ? { color: pinColor, fill: pinColor }
+                        : { color: '#dc2626', fill: '#ef4444' }
+                    }
+                  />
+                  <span className="absolute top-2 h-2 w-2 rounded-full bg-white shadow-xs" />
+                </div>
+                {marker.title && (
+                  <span className="mt-0.5 rounded border border-border bg-background/95 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-xs whitespace-nowrap max-w-[180px] truncate">
+                    {marker.title}
+                  </span>
+                )}
               </div>
-              {marker.title && (
-                <span className="mt-0.5 rounded border border-border bg-background/95 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-xs whitespace-nowrap max-w-[180px] truncate">
-                  {marker.title}
-                </span>
-              )}
-            </div>
-          </Marker>
-        ))}
+            </Marker>
+          );
+        })}
 
         {/* Reverse geocoding popup */}
         {reversePopup && (
@@ -464,6 +503,9 @@ export default function MapView() {
 
       {/* Category legend */}
       <Legend />
+
+      {/* AI Assistant Chat Panel */}
+      <ChatPanel />
 
       {/* Navigation panel or Directions panel */}
       {isNavigating ? <NavPanel /> : <DirectionsPanel />}
