@@ -1,6 +1,11 @@
 interface ChatContext {
   userLocation: { lng: number; lat: number } | null;
   bounds: { west: number; south: number; east: number; north: number } | null;
+  prefs?: {
+    interests: string[];
+    budget: 'low' | 'medium' | 'any';
+    transport: 'drive' | 'walk' | 'cycle';
+  } | null;
 }
 
 const pariChowkContext: ChatContext = {
@@ -16,6 +21,7 @@ interface PlaceResultItem {
   distanceM: number;
   lng: number;
   lat: number;
+  reason?: string;
 }
 
 interface DestinationResult {
@@ -60,7 +66,12 @@ function summarizeToolOutput(output: unknown): string {
   }
   if (Array.isArray(out.places)) {
     const list = out.places
-      .map((p) => `${p.name} (${p.distanceM}m${p.rating ? `, ${p.rating}★` : ''})`)
+      .map(
+        (p) =>
+          `${p.name} (${p.distanceM}m${p.rating ? `, ${p.rating}★` : ''}${
+            p.reason ? ` [${p.reason}]` : ''
+          })`
+      )
       .join(', ');
     return `${out.places.length} place(s) [${list || 'none'}] (center: ${out.centerUsed}${out.note ? `, note: "${out.note}"` : ''})`;
   }
@@ -167,6 +178,7 @@ async function sleep(ms: number) {
 
 async function main() {
   const runAll = process.argv.includes('--all');
+  const runDay51 = process.argv.includes('--day5-1');
 
   if (runAll) {
     console.log('Starting full Chat Tools Test Suite...');
@@ -189,15 +201,34 @@ async function main() {
     // Message 4
     await streamQuery('find a hospital within 500 metres', pariChowkContext);
     await sleep(15000);
-  } else {
+
+    // Message 5: Review summary query
+    await streamQuery('what do people say about Nimt Hospital?', pariChowkContext);
+    await sleep(15000);
+  } else if (runDay51) {
     console.log('Starting Day 5.1 Review Summarization Chat Test...');
     console.log(
       `Context: Pari Chowk (lng=${pariChowkContext.userLocation?.lng}, lat=${pariChowkContext.userLocation?.lat})\n`
     );
+    await streamQuery('what do people say about Nimt Hospital?', pariChowkContext);
+    return;
   }
 
-  // Message 5: Review summary query for a hospital from search results
-  await streamQuery('what do people say about Nimt Hospital?', pariChowkContext);
+  // Day 5.3 Preferences and Personalized Ranking Test
+  console.log('Starting Day 5.3 Preferences & Personalized Ranking Chat Test...');
+  const prefsContext: ChatContext = {
+    ...pariChowkContext,
+    prefs: {
+      interests: ['park'],
+      budget: 'any',
+      transport: 'walk',
+    },
+  };
+  console.log(
+    `Context: Pari Chowk (lng=${prefsContext.userLocation?.lng}, lat=${prefsContext.userLocation?.lat}) with prefs: interests=['park'], budget='any', transport='walk'\n`
+  );
+
+  await streamQuery('what should I do nearby?', prefsContext);
 
   console.log('\n========================================');
   console.log('Test query finished.');

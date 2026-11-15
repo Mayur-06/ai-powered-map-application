@@ -12,11 +12,14 @@ import {
   AlertCircle,
   RefreshCw,
   MessageSquare,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useMapStore } from '@/lib/store/mapStore';
 import { getMapInstance } from '@/lib/mapRegistry';
+import { loadPrefs } from '@/lib/prefs';
+import PrefsOnboarding from '@/components/chat/PrefsOnboarding';
 import {
   applyToolResult,
   isToolCallApplied,
@@ -34,6 +37,7 @@ const EXAMPLE_PROMPTS = [
 
 function getLatestContext() {
   const userLoc = useMapStore.getState().userLocation;
+  const prefs = useMapStore.getState().prefs;
   const map = getMapInstance();
   let bounds: { west: number; south: number; east: number; north: number } | null = null;
 
@@ -58,6 +62,7 @@ function getLatestContext() {
       ? { lng: userLoc.longitude, lat: userLoc.latitude }
       : null,
     bounds,
+    prefs: prefs ?? undefined,
   };
 }
 
@@ -124,9 +129,22 @@ function parseToolPart(part: unknown): ParsedTool | null {
 export default function ChatPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
+  const [hasSkippedOnboarding, setHasSkippedOnboarding] = useState(false);
+  const [isEditingPrefs, setIsEditingPrefs] = useState(false);
   const isNavigating = useMapStore((state) => state.isNavigating);
+  const prefs = useMapStore((state) => state.prefs);
+  const setPrefs = useMapStore((state) => state.setPrefs);
+  const clearPrefs = useMapStore((state) => state.clearPrefs);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Hydrate preferences from localStorage on mount
+  useEffect(() => {
+    const loaded = loadPrefs();
+    if (loaded) {
+      setPrefs(loaded);
+    }
+  }, [setPrefs]);
 
   // Dedicated transport that attaches fresh map context with every request
   const transport = useMemo(
@@ -285,6 +303,24 @@ export default function ChatPanel() {
             <Button
               type="button"
               variant="ghost"
+              size="sm"
+              className={`h-7 px-2 text-[11px] gap-1 cursor-pointer ${
+                isEditingPrefs
+                  ? 'bg-muted text-foreground'
+                  : prefs
+                  ? 'text-primary hover:text-primary font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setIsEditingPrefs((prev) => !prev)}
+              title="Preferences"
+              aria-label="Preferences"
+            >
+              <SlidersHorizontal className="h-3 w-3" />
+              <span>Preferences</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
               onClick={handleNewChat}
@@ -307,34 +343,66 @@ export default function ChatPanel() {
           </div>
         </div>
 
+        {/* Preferences Editor (when opened via header) */}
+        {isEditingPrefs && (
+          <div className="border-b border-border/60 bg-muted/20 p-3 shrink-0">
+            <PrefsOnboarding
+              initialPrefs={prefs}
+              isEditing={true}
+              onSave={(newPrefs) => {
+                setPrefs(newPrefs);
+                setIsEditingPrefs(false);
+              }}
+              onClear={() => {
+                clearPrefs();
+                setIsEditingPrefs(false);
+              }}
+              onCancel={() => setIsEditingPrefs(false)}
+            />
+          </div>
+        )}
+
         {/* Messages Scroll Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs min-h-0">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2.5">
-                <MessageSquare className="h-5 w-5" />
+            !prefs && !hasSkippedOnboarding && !isEditingPrefs ? (
+              <div className="py-1">
+                <PrefsOnboarding
+                  initialPrefs={prefs}
+                  isEditing={false}
+                  onSave={(newPrefs) => {
+                    setPrefs(newPrefs);
+                  }}
+                  onSkip={() => setHasSkippedOnboarding(true)}
+                />
               </div>
-              <p className="font-semibold text-foreground text-xs">
-                How can I help you explore?
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1 max-w-[240px]">
-                Ask for nearby places, directions, or ask me to move the map.
-              </p>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2.5">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <p className="font-semibold text-foreground text-xs">
+                  How can I help you explore?
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1 max-w-[240px]">
+                  Ask for nearby places, directions, or ask me to move the map.
+                </p>
 
-              {/* 3 Example Prompts */}
-              <div className="mt-4 flex flex-col gap-1.5 w-full">
-                {EXAMPLE_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    onClick={() => handleSend(prompt)}
-                    className="text-left rounded-lg border border-border/80 bg-muted/40 px-3 py-2 text-[11px] font-medium text-foreground hover:bg-muted hover:border-primary/40 transition-colors cursor-pointer"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+                {/* 3 Example Prompts */}
+                <div className="mt-4 flex flex-col gap-1.5 w-full">
+                  {EXAMPLE_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => handleSend(prompt)}
+                      className="text-left rounded-lg border border-border/80 bg-muted/40 px-3 py-2 text-[11px] font-medium text-foreground hover:bg-muted hover:border-primary/40 transition-colors cursor-pointer"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )
           ) : (
             messages.map((message) => {
               const isUser = message.role === 'user';

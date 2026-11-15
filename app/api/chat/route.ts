@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { getModel } from '@/lib/ai/model';
 import { buildSystemPrompt } from '@/lib/ai/prompts';
 import { createTools } from '@/lib/ai/tools';
+import { userPrefsSchema, type UserPrefs } from '@/lib/prefs';
 
 const textPartSchema = z.object({
   type: z.literal('text'),
@@ -60,6 +61,7 @@ const contextSchema = z
   .object({
     userLocation: userLocationSchema.nullable().optional(),
     bounds: boundsSchema.nullable().optional(),
+    prefs: z.unknown().optional(),
   })
   .nullable()
   .optional();
@@ -108,11 +110,20 @@ export async function POST(request: NextRequest) {
     }
   );
 
+  let validPrefs: UserPrefs | null = null;
+  if (parsed.data.context?.prefs) {
+    const prefsParsed = userPrefsSchema.safeParse(parsed.data.context.prefs);
+    if (prefsParsed.success) {
+      validPrefs = prefsParsed.data;
+    }
+  }
+
   try {
     const model = getModel();
     const tools = createTools({
       userLocation: parsed.data.context?.userLocation ?? null,
       bounds: parsed.data.context?.bounds ?? null,
+      prefs: validPrefs,
     });
     const modelMessages = await convertToModelMessages(normalizedMessages, {
       tools,
@@ -120,7 +131,11 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model,
-      system: buildSystemPrompt(parsed.data.context),
+      system: buildSystemPrompt({
+        userLocation: parsed.data.context?.userLocation ?? null,
+        bounds: parsed.data.context?.bounds ?? null,
+        prefs: validPrefs,
+      }),
       messages: modelMessages,
       tools,
       stopWhen: stepCountIs(4),

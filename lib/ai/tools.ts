@@ -4,10 +4,13 @@ import distance from '@turf/distance';
 import { createServerClient } from '@/lib/supabase/server';
 import { getDirections, type RouteMode } from '@/lib/mapbox/directions';
 import { INITIAL_VIEW_STATE } from '@/lib/store/mapStore';
+import type { UserPrefs } from '@/lib/prefs';
+import type { CategoryId } from '@/lib/categories';
 
 export interface ToolContext {
   userLocation: { lng: number; lat: number } | null;
   bounds: { west: number; south: number; east: number; north: number } | null;
+  prefs?: UserPrefs | null;
 }
 
 const CATEGORY_VALUES = [
@@ -20,6 +23,17 @@ const CATEGORY_VALUES = [
   'hospital',
   'shopping',
 ] as const;
+
+const CATEGORY_INTEREST_LABELS: Record<string, string> = {
+  cafe: 'cafes',
+  restaurant: 'restaurants',
+  pharmacy: 'pharmacies',
+  bank_atm: 'banks and ATMs',
+  fuel: 'fuel stations',
+  park: 'parks',
+  hospital: 'hospitals',
+  shopping: 'shopping',
+};
 
 function parsePointGeom(geom: unknown): { lng: number; lat: number } | null {
   if (!geom) return null;
@@ -60,7 +74,7 @@ const searchPlacesInputSchema = z.object({
   category: z
     .enum(CATEGORY_VALUES)
     .optional()
-    .describe('Filter places by category: cafe, restaurant, pharmacy, bank_atm, fuel, park, hospital, or shopping'),
+    .describe('Filter places by category: cafe, restaurant, pharmacy, bank_atm, fuel, park, hospital, or shopping. Leave empty to search across all categories or for general recommendations.'),
   query: z
     .string()
     .max(60, 'Keyword query must be at most 60 characters')
@@ -82,9 +96,8 @@ const getRouteInputSchema = z.object({
     .describe('The unique UUID of the destination place, selected from searchPlaces results'),
   mode: z
     .enum(['drive', 'walk', 'cycle'])
-    .default('drive')
     .optional()
-    .describe('Travel mode: drive, walk, or cycle (defaults to drive)'),
+    .describe('Travel mode: drive, walk, or cycle (optional; defaults to user preferred transport or drive)'),
 });
 
 const mapControlInputSchema = z.object({
@@ -209,23 +222,54 @@ export function createTools(context: ToolContext) {
             );
           }
 
+          const preferredCategories = new Set(context?.prefs?.interests ?? []);
+          const shouldBoostInterests = !input.category && preferredCategories.size > 0;
+
           const placesWithDistance = rows.map((r) => {
             const dist = distance([center.lng, center.lat], [r.lng, r.lat], {
               units: 'meters',
             });
+            const distRounded = Math.round(dist);
+            const isPreferred = preferredCategories.has(r.category as CategoryId);
+
+            // Deterministic ranking rule:
+            // If user preferences exist and no specific category filter was provided,
+            // places matching the user's preferred interest categories are boosted for ordering
+            // by treating them as 30% closer (score = dist * 0.7). Real distance (distanceM) is preserved.
+            const score = shouldBoostInterests && isPreferred ? dist * 0.7 : dist;
+
+            let reason: string | undefined;
+            if (shouldBoostInterests && isPreferred) {
+              const interestLabel = CATEGORY_INTEREST_LABELS[r.category] || r.category;
+              reason = `Matches your interest in ${interestLabel}`;
+            }
+
             return {
               id: r.id,
               name: r.name,
               category: r.category,
               rating: typeof r.rating === 'number' ? r.rating : null,
-              distanceM: Math.round(dist),
+              distanceM: distRounded,
+              score,
               lng: r.lng,
               lat: r.lat,
+              ...(reason ? { reason } : {}),
             };
           });
 
-          placesWithDistance.sort((a, b) => a.distanceM - b.distanceM);
-          const places = placesWithDistance.slice(0, 8);
+          placesWithDistance.sort((a, b) => a.score - b.score);
+          const places = placesWithDistance
+            .slice(0, 8)
+            .map((item) => ({
+              id: item.id,
+              name: item.name,
+              category: item.category,
+              rating: item.rating,
+              distanceM: item.distanceM,
+              lng: item.lng,
+              lat: item.lat,
+              ...(item.reason ? { reason: item.reason } : {}),
+            }));
 
           if (places.length === 0) {
             return {
@@ -272,7 +316,7 @@ export function createTools(context: ToolContext) {
             return { error: 'invalid_poi_location' };
           }
 
-          const routeMode: RouteMode = input.mode ?? 'drive';
+          const routeMode: RouteMode = input.mode ?? context?.prefs?.transport ?? 'drive';
           const route = await getDirections({
             origin: context.userLocation,
             destination: coords,
@@ -412,7 +456,7 @@ export function createTools(context: ToolContext) {
           return {
             userLocation: context?.userLocation ?? null,
             bounds: context?.bounds ?? null,
-            preferences: null,
+            preferences: context?.prefs ?? null,
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Failed to get user context';

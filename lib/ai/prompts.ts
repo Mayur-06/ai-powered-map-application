@@ -1,6 +1,9 @@
+import type { UserPrefs } from '@/lib/prefs';
+
 export interface SystemPromptContext {
   userLocation?: { lng: number; lat: number } | null;
   bounds?: { west: number; south: number; east: number; north: number } | null;
+  prefs?: UserPrefs | null;
 }
 
 /**
@@ -17,9 +20,17 @@ export function buildSystemPrompt(context?: SystemPromptContext | null): string 
     'Ratings come from AI-generated sample demo data, so call them "sample ratings" when mentioned.',
     'When a user asks what people say about a place or asks for reviews/opinions, first find it with searchPlaces if needed, then call summarizeReviews and answer ONLY from its output in at most 3 sentences, mentioning that it is based on sample reviews. Never add facts that are not in the summary.',
     'Keep replies to at most 3 sentences and name at most 3 places in text (the UI will show cards).',
+    'For general recommendation queries (such as "what should I do nearby?"), call searchPlaces without a category so results across categories can be retrieved and ranked.',
     'Be plain, concise, and friendly.',
     "The user's current location and the map's visible bounds are provided as context when available.",
   ];
+
+  if (context?.prefs) {
+    instructions.push(
+      "When user preferences are present, use them to phrase recommendations and mention a result's reason string when provided, but never claim preferences that are not in the data and never name places that tools did not return.",
+      'Budget is not stored per place, so you must not claim any place is cheap, affordable, or expensive.'
+    );
+  }
 
   const contextDetails: string[] = [];
   if (context?.userLocation) {
@@ -30,6 +41,15 @@ export function buildSystemPrompt(context?: SystemPromptContext | null): string 
   if (context?.bounds) {
     contextDetails.push(
       `Map bounds: west=${context.bounds.west.toFixed(5)}, south=${context.bounds.south.toFixed(5)}, east=${context.bounds.east.toFixed(5)}, north=${context.bounds.north.toFixed(5)}`
+    );
+  }
+  if (context?.prefs) {
+    const interestsStr =
+      context.prefs.interests && context.prefs.interests.length > 0
+        ? context.prefs.interests.join(', ')
+        : 'none';
+    contextDetails.push(
+      `User preferences: interests=[${interestsStr}], budget=${context.prefs.budget}, transport=${context.prefs.transport}`
     );
   }
 

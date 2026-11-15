@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { PaddingOptions } from 'mapbox-gl';
 import type { RouteResult, RouteMode, RouteStep, RouteGeometry, RouteManeuver } from '@/lib/mapbox/directions';
 import { CATEGORIES } from '@/lib/categories';
+import { type UserPrefs, savePrefs, clearPrefs as clearStoredPrefs } from '@/lib/prefs';
 
 export type { RouteResult, RouteMode, RouteStep, RouteGeometry, RouteManeuver };
 
@@ -58,6 +59,7 @@ export interface MapState {
   routeMode: RouteMode;
   mapStyle: MapStyleMode;
   isNavigating: boolean;
+  prefs: UserPrefs | null;
   setUserLocation: (location: UserLocation | null) => void;
   setViewState: (viewState: ViewState) => void;
   updateViewState: (patch: Partial<ViewState>) => void;
@@ -74,6 +76,8 @@ export interface MapState {
   toggleMapStyle: () => void;
   startNavigation: () => void;
   stopNavigation: () => void;
+  setPrefs: (prefs: UserPrefs | null) => void;
+  clearPrefs: () => void;
 }
 
 export const MAPBOX_STYLES: Record<MapStyleMode, string> = {
@@ -100,6 +104,7 @@ export const useMapStore = create<MapState>((set) => ({
   routeMode: 'drive',
   mapStyle: 'streets',
   isNavigating: false,
+  prefs: null,
   setUserLocation: (location) => set({ userLocation: location }),
   setViewState: (viewState) => set({ viewState }),
   updateViewState: (patch) =>
@@ -128,4 +133,16 @@ export const useMapStore = create<MapState>((set) => ({
     })),
   startNavigation: () => set({ isNavigating: true }),
   stopNavigation: () => set({ isNavigating: false }),
+  setPrefs: (prefs) => {
+    if (prefs) {
+      savePrefs(prefs);
+    } else {
+      clearStoredPrefs();
+    }
+    set({ prefs });
+  },
+  clearPrefs: () => {
+    clearStoredPrefs();
+    set({ prefs: null });
+  },
 }));

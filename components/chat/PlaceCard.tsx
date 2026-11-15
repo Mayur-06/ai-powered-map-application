@@ -13,6 +13,7 @@ export interface PlaceItem {
   distanceM?: number;
   lng: number;
   lat: number;
+  reason?: string;
 }
 
 interface PlaceCardProps {
@@ -92,6 +93,11 @@ export default function PlaceCard({ place }: PlaceCardProps) {
               </span>
             )}
           </div>
+          {place.reason && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+              {place.reason}
+            </p>
+          )}
         </div>
       </div>
 
