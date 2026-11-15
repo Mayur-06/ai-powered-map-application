@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, useSyncExternalStore } from '
 import { useMapStore } from '@/lib/store/mapStore';
 import { getPoiDetails, type PoiDetails } from '@/lib/poi/actions';
 import { getCategoryInfo } from '@/lib/categories';
+import InsightCard from '@/components/map/InsightCard';
 import {
   Sheet,
   SheetContent,
@@ -261,9 +262,10 @@ export default function PoiSheet() {
           </div>
         </SheetHeader>
 
-        {/* Empty container for Day 5 AI review insight card */}
         {/* Slot for Day 5 AI review insight card */}
-        <div data-slot="insight" className="empty:hidden" />
+        <div data-slot="insight" className="empty:hidden px-4 sm:px-5 pt-3">
+          {details?.summary ? <InsightCard summary={details.summary} /> : null}
+        </div>
 
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">

@@ -38,12 +38,26 @@ interface ToolOutputSummary {
   action?: string;
   userLocation?: unknown;
   bounds?: unknown;
+  name?: string;
+  summary?: unknown;
 }
 
 function summarizeToolOutput(output: unknown): string {
   if (!output || typeof output !== 'object') return String(output);
   const out = output as ToolOutputSummary;
   if (out.error) return `Error: ${out.error}`;
+  if (out.summary !== undefined) {
+    const sum = out.summary as {
+      vibe?: string;
+      pros?: string[];
+      cons?: string[];
+      sentimentScore?: number;
+    } | null;
+    if (sum) {
+      return `Summary for "${out.name}": vibe="${sum.vibe}", pros=${sum.pros?.length || 0}, cons=${sum.cons?.length || 0}${out.note ? ` (note: ${out.note})` : ''}`;
+    }
+    return `Summary for "${out.name}": none (${out.note || 'No summary'})`;
+  }
   if (Array.isArray(out.places)) {
     const list = out.places
       .map((p) => `${p.name} (${p.distanceM}m${p.rating ? `, ${p.rating}★` : ''})`)
@@ -152,26 +166,41 @@ async function sleep(ms: number) {
 }
 
 async function main() {
-  console.log('Starting Day 4.2 Chat Tools Test...');
-  console.log(`Context: Pari Chowk (lng=${pariChowkContext.userLocation?.lng}, lat=${pariChowkContext.userLocation?.lat})\n`);
+  const runAll = process.argv.includes('--all');
 
-  // Message 1
-  await streamQuery('find a cafe near me', pariChowkContext);
-  await sleep(15000);
+  if (runAll) {
+    console.log('Starting full Chat Tools Test Suite...');
+    console.log(
+      `Context: Pari Chowk (lng=${pariChowkContext.userLocation?.lng}, lat=${pariChowkContext.userLocation?.lat})\n`
+    );
 
-  // Message 2
-  await streamQuery('take me to the nearest pharmacy', pariChowkContext);
-  await sleep(15000);
+    // Message 1
+    await streamQuery('find a cafe near me', pariChowkContext);
+    await sleep(15000);
 
-  // Message 3
-  await streamQuery('is there a Starbucks near me?', pariChowkContext);
-  await sleep(15000);
+    // Message 2
+    await streamQuery('take me to the nearest pharmacy', pariChowkContext);
+    await sleep(15000);
 
-  // Message 4
-  await streamQuery('find a hospital within 500 metres', pariChowkContext);
+    // Message 3
+    await streamQuery('is there a Starbucks near me?', pariChowkContext);
+    await sleep(15000);
+
+    // Message 4
+    await streamQuery('find a hospital within 500 metres', pariChowkContext);
+    await sleep(15000);
+  } else {
+    console.log('Starting Day 5.1 Review Summarization Chat Test...');
+    console.log(
+      `Context: Pari Chowk (lng=${pariChowkContext.userLocation?.lng}, lat=${pariChowkContext.userLocation?.lat})\n`
+    );
+  }
+
+  // Message 5: Review summary query for a hospital from search results
+  await streamQuery('what do people say about Nimt Hospital?', pariChowkContext);
 
   console.log('\n========================================');
-  console.log('All 4 test queries finished.');
+  console.log('Test query finished.');
   console.log('========================================');
 }
 

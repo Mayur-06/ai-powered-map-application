@@ -132,6 +132,21 @@ const getUserContextInputSchema = z
   .object({})
   .describe('Retrieve the user current coordinates, active map bounds, and saved user preferences');
 
+const summarizeReviewsInputSchema = z.object({
+  poiId: z
+    .string()
+    .uuid('Destination must be a valid POI UUID from a searchPlaces result')
+    .describe('The unique UUID of the place from a searchPlaces result to summarize reviews for'),
+});
+
+const poiSummarySchema = z.object({
+  pros: z.array(z.string()),
+  cons: z.array(z.string()),
+  bestFor: z.array(z.string()),
+  vibe: z.string(),
+  sentimentScore: z.number(),
+});
+
 type GetRouteInput = z.infer<typeof getRouteInputSchema>;
 
 interface PoiRpcRow {
@@ -401,6 +416,48 @@ export function createTools(context: ToolContext) {
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Failed to get user context';
+          return { error: msg };
+        }
+      },
+    }),
+
+    summarizeReviews: tool({
+      description:
+        'Retrieve the stored review summary (pros, cons, bestFor, vibe, sentiment) for a place by its POI ID.',
+      inputSchema: summarizeReviewsInputSchema,
+      execute: async (input) => {
+        try {
+          const supabase = createServerClient();
+          const { data, error } = await supabase
+            .from('pois')
+            .select('name, summary')
+            .eq('id', input.poiId)
+            .maybeSingle();
+
+          if (error) {
+            return { error: `Failed to fetch review summary: ${error.message}` };
+          }
+
+          if (!data) {
+            return { error: 'Place not found' };
+          }
+
+          const summaryParsed = poiSummarySchema.safeParse(data.summary);
+          if (!summaryParsed.success || !summaryParsed.data) {
+            return {
+              name: data.name,
+              summary: null,
+              note: 'No summary available yet',
+            };
+          }
+
+          return {
+            name: data.name,
+            summary: summaryParsed.data,
+          };
+        } catch (err: unknown) {
+          const msg =
+            err instanceof Error ? err.message : 'Failed to retrieve review summary';
           return { error: msg };
         }
       },

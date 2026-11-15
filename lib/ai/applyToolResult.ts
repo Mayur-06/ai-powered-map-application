@@ -278,6 +278,11 @@ export async function applyToolResult(toolName: string, output: unknown): Promis
       break;
     }
 
+    case 'summarizeReviews': {
+      // summarizeReviews needs no map action
+      break;
+    }
+
     default:
       break;
   }

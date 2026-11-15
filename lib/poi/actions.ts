@@ -11,6 +11,14 @@ export interface PoiReview {
   is_sample: boolean;
 }
 
+export interface PoiSummary {
+  pros: string[];
+  cons: string[];
+  bestFor: string[];
+  vibe: string;
+  sentimentScore: number;
+}
+
 export interface PoiDetails {
   id: string;
   name: string;
@@ -19,6 +27,7 @@ export interface PoiDetails {
   address: string | null;
   hours: { raw?: string } | Record<string, unknown> | null;
   reviews: PoiReview[];
+  summary: PoiSummary | null;
 }
 
 export type PoiDetailsResult =
@@ -26,6 +35,14 @@ export type PoiDetailsResult =
   | { success: false; error: string };
 
 const idSchema = z.string().uuid({ message: 'Invalid POI ID format' });
+
+const poiSummarySchema = z.object({
+  pros: z.array(z.string()),
+  cons: z.array(z.string()),
+  bestFor: z.array(z.string()),
+  vibe: z.string(),
+  sentimentScore: z.number(),
+});
 
 export async function getPoiDetails(id: unknown): Promise<PoiDetailsResult> {
   const parsed = idSchema.safeParse(id);
@@ -43,7 +60,7 @@ export async function getPoiDetails(id: unknown): Promise<PoiDetailsResult> {
     const [poiRes, reviewsRes] = await Promise.all([
       supabase
         .from('pois')
-        .select('id, name, category, rating, address, hours')
+        .select('id, name, category, rating, address, hours, summary')
         .eq('id', poiId)
         .maybeSingle(),
       supabase
@@ -69,6 +86,9 @@ export async function getPoiDetails(id: unknown): Promise<PoiDetailsResult> {
     }
 
     const poi = poiRes.data;
+    const summaryParsed = poiSummarySchema.safeParse(poi.summary);
+    const summary: PoiSummary | null = summaryParsed.success ? summaryParsed.data : null;
+
     const reviews: PoiReview[] = (reviewsRes.data ?? []).map((r) => ({
       author: r.author ?? null,
       rating: r.rating != null ? Number(r.rating) : null,
@@ -87,6 +107,7 @@ export async function getPoiDetails(id: unknown): Promise<PoiDetailsResult> {
         address: poi.address ?? null,
         hours: (poi.hours as { raw?: string } | null) ?? null,
         reviews,
+        summary,
       },
     };
   } catch (err) {
