@@ -80,13 +80,12 @@ export default function PoiSheet() {
         setDetails(res.data);
         setError(null);
       } else {
-        setError(res.error || 'Failed to load details');
+        setError(res.error || 'Unable to load place details right now.');
         setDetails(null);
       }
-    } catch (err) {
+    } catch {
       if (activeIdRef.current !== poiId) return;
-      const msg = err instanceof Error ? err.message : 'Failed to load details';
-      setError(msg);
+      setError('Unable to load place details right now. Please try again.');
       setDetails(null);
     } finally {
       if (activeIdRef.current === poiId) {
@@ -268,7 +267,10 @@ export default function PoiSheet() {
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+        <div
+          className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4"
+          style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}
+        >
           {/* Loading Skeleton */}
           {isLoading && !details && (
             <div className="space-y-3" aria-busy="true" aria-label="Loading details">
@@ -305,7 +307,7 @@ export default function PoiSheet() {
                 variant="outline"
                 size="sm"
                 onClick={handleRetry}
-                className="gap-1.5 cursor-pointer mt-1"
+                className="gap-1.5 cursor-pointer mt-1 min-h-[40px] px-4"
               >
                 <RotateCw className="h-3.5 w-3.5" />
                 <span>Retry</span>
@@ -365,6 +367,13 @@ export default function PoiSheet() {
               )}
             </div>
           )}
+
+          {/* Attribution and honesty disclaimer footer */}
+          <div className="border-t border-border/60 pt-3 mt-4">
+            <p className="text-[10px] text-muted-foreground/75 text-center leading-tight">
+              Places: &copy; OpenStreetMap contributors. Ratings and reviews are AI-generated sample data.
+            </p>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

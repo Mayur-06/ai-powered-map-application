@@ -96,7 +96,8 @@ export default function RouteCard({
         size="sm"
         onClick={() => startNavigation()}
         disabled={isNavigating}
-        className="w-full gap-1.5 font-medium cursor-pointer"
+        className="w-full min-h-[40px] gap-1.5 font-medium cursor-pointer"
+        aria-label={`Start navigation to ${destination.name}`}
       >
         <Navigation className="h-3.5 w-3.5 fill-current" />
         <span>{isNavigating ? 'Navigating...' : 'Start Navigation'}</span>

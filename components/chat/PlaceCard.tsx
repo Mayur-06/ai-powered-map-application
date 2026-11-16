@@ -59,7 +59,7 @@ export default function PlaceCard({ place }: PlaceCardProps) {
   return (
     <div
       onClick={handleClick}
-      className="group flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card p-2.5 transition-all hover:border-primary/50 hover:bg-muted/50 cursor-pointer shadow-xs"
+      className="group flex min-h-[44px] items-center justify-between gap-3 rounded-lg border border-border/70 bg-card p-2.5 transition-all hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shadow-xs"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {

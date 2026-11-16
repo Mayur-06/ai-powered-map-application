@@ -106,7 +106,7 @@ export default function PrefsOnboarding({
                   key={cat.id}
                   type="button"
                   onClick={() => toggleInterest(cat.id)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] transition-all cursor-pointer border ${
+                  className={`flex min-h-[40px] items-center gap-1.5 px-3 py-2 rounded-full text-xs transition-all cursor-pointer border ${
                     isSelected
                       ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
                       : 'bg-muted/50 border-border/70 text-foreground hover:bg-muted hover:border-primary/40'
@@ -134,7 +134,7 @@ export default function PrefsOnboarding({
                   key={opt.id}
                   type="button"
                   onClick={() => setSelectedBudget(opt.id)}
-                  className={`flex-1 py-1 px-2 rounded-lg text-[11px] text-center transition-all cursor-pointer border ${
+                  className={`flex-1 min-h-[40px] py-2 px-2.5 rounded-lg text-xs text-center transition-all cursor-pointer border ${
                     isSelected
                       ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
                       : 'bg-muted/50 border-border/70 text-foreground hover:bg-muted hover:border-primary/40'
@@ -161,7 +161,7 @@ export default function PrefsOnboarding({
                   key={opt.id}
                   type="button"
                   onClick={() => setSelectedTransport(opt.id)}
-                  className={`flex-1 py-1 px-2 rounded-lg text-[11px] text-center transition-all cursor-pointer border ${
+                  className={`flex-1 min-h-[40px] py-2 px-2.5 rounded-lg text-xs text-center transition-all cursor-pointer border ${
                     isSelected
                       ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
                       : 'bg-muted/50 border-border/70 text-foreground hover:bg-muted hover:border-primary/40'
@@ -186,9 +186,10 @@ export default function PrefsOnboarding({
                 variant="ghost"
                 size="sm"
                 onClick={onClear}
-                className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer gap-1"
+                className="min-h-[40px] px-3 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer gap-1"
+                aria-label="Clear all preferences"
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-3.5 w-3.5" />
                 Clear
               </Button>
             )}
@@ -199,7 +200,7 @@ export default function PrefsOnboarding({
                   variant="ghost"
                   size="sm"
                   onClick={onCancel}
-                  className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="min-h-[40px] px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -208,9 +209,9 @@ export default function PrefsOnboarding({
                 type="button"
                 size="sm"
                 onClick={handleSave}
-                className="h-7 px-3 text-[11px] cursor-pointer gap-1"
+                className="min-h-[40px] px-3.5 text-xs cursor-pointer gap-1"
               >
-                <Check className="h-3 w-3" />
+                <Check className="h-3.5 w-3.5" />
                 Save
               </Button>
             </div>
@@ -223,7 +224,7 @@ export default function PrefsOnboarding({
                 variant="ghost"
                 size="sm"
                 onClick={onSkip}
-                className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                className="min-h-[40px] px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 Skip
               </Button>
@@ -232,9 +233,9 @@ export default function PrefsOnboarding({
               type="button"
               size="sm"
               onClick={handleSave}
-              className="h-7 px-3 text-[11px] ml-auto cursor-pointer gap-1"
+              className="min-h-[40px] px-3.5 text-xs ml-auto cursor-pointer gap-1"
             >
-              <Check className="h-3 w-3" />
+              <Check className="h-3.5 w-3.5" />
               Save Preferences
             </Button>
           </>

@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
     const suggestions = await suggest(parsed.data);
     return NextResponse.json({ suggestions });
   } catch (error) {
-    console.error('Error in /api/search/suggest:', error);
     const message =
       error instanceof Error && error.message.includes('MAPBOX_SECRET_TOKEN')
         ? 'Mapbox secret token is not configured on the server'

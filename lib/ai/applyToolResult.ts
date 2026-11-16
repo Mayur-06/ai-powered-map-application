@@ -226,8 +226,8 @@ export async function applyToolResult(toolName: string, output: unknown): Promis
                 useMapStore.getState().setRoute(data.route);
               }
             }
-          } catch (err) {
-            console.error('Failed to fetch full route in applyToolResult:', err);
+          } catch {
+            // Silently fail if route cannot be fetched in background
           }
         }
       }
@@ -361,8 +361,8 @@ export async function applyToolResult(toolName: string, output: unknown): Promis
                 useMapStore.getState().setRoute(data.route);
               }
             }
-          } catch (err) {
-            console.error('Failed to fetch full multi-stop route in applyToolResult:', err);
+          } catch {
+            // Silently fail if multi-stop route cannot be fetched in background
           }
         }
       }

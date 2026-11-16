@@ -93,9 +93,8 @@ export default function DirectionsPanel() {
         }
 
         setRoute(data.route);
-      } catch (err) {
-        console.error('Routing error:', err);
-        setErrorMessage(err instanceof Error ? err.message : 'Error fetching directions');
+      } catch {
+        setErrorMessage('Unable to calculate route. Please try again.');
         clearRoute();
       } finally {
         setIsLoading(false);
@@ -130,6 +129,7 @@ export default function DirectionsPanel() {
       className="absolute bottom-6 left-4 right-4 sm:right-auto sm:w-84 sm:max-w-sm z-20 rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur-md transition-all"
       style={{
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
       {/* Header: Destination name and close/clear */}
@@ -163,7 +163,7 @@ export default function DirectionsPanel() {
               type="button"
               disabled={isLoading}
               onClick={() => handleModeChange(m.id)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+              className={`flex flex-1 min-h-[40px] items-center justify-center gap-1.5 rounded-md py-2 text-xs font-medium transition-colors cursor-pointer ${
                 isActive
                   ? 'bg-background text-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
@@ -185,16 +185,31 @@ export default function DirectionsPanel() {
           <button
             type="button"
             onClick={() => setErrorMessage(null)}
-            className="shrink-0 text-destructive/70 hover:text-destructive cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center shrink-0 text-destructive/70 hover:text-destructive cursor-pointer p-1"
             aria-label="Dismiss error"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
       {/* Actions & Route Details */}
       <div className="mt-3">
+        {isLoading && !route && (
+          <div className="mb-3 space-y-2">
+            <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5 border border-border/50">
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-10 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+              </div>
+              <div className="space-y-1.5 flex flex-col items-end">
+                <div className="h-2.5 w-12 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-14 rounded bg-muted animate-pulse" />
+              </div>
+            </div>
+          </div>
+        )}
+
         {route ? (
           <div className="space-y-3">
             {/* Route Stats: Distance and ETA */}
@@ -226,14 +241,14 @@ export default function DirectionsPanel() {
                   useMapStore.getState().setMarkers([]);
                   setErrorMessage(null);
                 }}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 Clear route
               </button>
               <button
                 type="button"
                 onClick={() => startNavigation()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
+                className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
               >
                 <Navigation className="h-3.5 w-3.5" />
                 <span>Start</span>
@@ -245,7 +260,7 @@ export default function DirectionsPanel() {
             type="button"
             disabled={isLoading || !hasGps}
             onClick={() => handleFetchRoute(routeMode)}
-            className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-medium text-white transition-colors cursor-pointer ${
+            className={`w-full min-h-[40px] inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-medium text-white transition-colors cursor-pointer ${
               isLoading || !hasGps
                 ? 'bg-primary/50 cursor-not-allowed opacity-80'
                 : 'bg-primary hover:bg-primary/90 shadow-xs'

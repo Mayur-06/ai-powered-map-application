@@ -75,8 +75,6 @@ export async function suggest({
   });
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
-    console.error('Mapbox suggest error:', res.status, errorText);
     throw new Error(`Mapbox suggest request failed with status ${res.status}`);
   }
 
@@ -113,8 +111,6 @@ export async function retrieve({
   });
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
-    console.error('Mapbox retrieve error:', res.status, errorText);
     throw new Error(`Mapbox retrieve request failed with status ${res.status}`);
   }
 
@@ -181,8 +177,6 @@ export async function reverseGeocode({
   });
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
-    console.error('Mapbox reverse geocoding error:', res.status, errorText);
     throw new Error(`Mapbox reverse geocoding request failed with status ${res.status}`);
   }
 

@@ -54,7 +54,7 @@ export default function PoiLayer() {
 
       if (error) {
         // Non-blocking quiet message
-        setErrorMessage(error.message);
+        setErrorMessage('Could not load nearby places');
         return;
       }
 
@@ -78,10 +78,9 @@ export default function PoiLayer() {
           }))
         );
       }
-    } catch (err: unknown) {
+    } catch {
       if (thisReq !== reqCounterRef.current) return;
-      const msg = err instanceof Error ? err.message : 'Failed to fetch places';
-      setErrorMessage(msg);
+      setErrorMessage('Could not load nearby places');
     }
   }, [map, setPois]);
 

@@ -14,8 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Map Application",
-  description: "AI-powered interactive map application",
+  title: "CompassAI — Intelligent Map & Navigation",
+  description:
+    "Conversational, AI-driven map application featuring natural language search, route optimization, and dynamic rerouting.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

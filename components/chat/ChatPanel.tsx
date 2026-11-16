@@ -284,8 +284,8 @@ export default function ChatPanel() {
             },
           }
         );
-      } catch (err) {
-        console.error('Failed to send message:', err);
+      } catch {
+        // Handled by useChat error state
       }
     },
     [input, isStreaming, sendMessage]
@@ -299,12 +299,12 @@ export default function ChatPanel() {
 
   return (
     <>
-      {/* Floating Toggle Button - positioned to avoid Legend, NavPanel and controls */}
+      {/* Floating Toggle Button - positioned to avoid Legend, NavPanel, and Mapbox attribution */}
       <div
         className={`absolute z-30 transition-all duration-200 ${
           isNavigating
-            ? 'bottom-[224px] right-4 sm:bottom-6 sm:right-48'
-            : 'bottom-6 right-4 sm:right-48'
+            ? 'bottom-[232px] right-4 sm:bottom-9 sm:right-48'
+            : 'bottom-9 right-4 sm:right-48'
         }`}
       >
         <button
@@ -362,7 +362,7 @@ export default function ChatPanel() {
               type="button"
               variant="ghost"
               size="sm"
-              className={`h-7 px-2 text-[11px] gap-1 cursor-pointer ${
+              className={`h-9 px-2.5 text-[11px] gap-1 cursor-pointer ${
                 isEditingPrefs
                   ? 'bg-muted text-foreground'
                   : prefs
@@ -373,14 +373,14 @@ export default function ChatPanel() {
               title="Preferences"
               aria-label="Preferences"
             >
-              <SlidersHorizontal className="h-3 w-3" />
+              <SlidersHorizontal className="h-3.5 w-3.5" />
               <span>Preferences</span>
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer"
               onClick={handleNewChat}
               title="Start a new chat"
               aria-label="Start a new chat"
@@ -391,7 +391,7 @@ export default function ChatPanel() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer"
               onClick={() => setIsOpen(false)}
               title="Close chat panel"
               aria-label="Close chat panel"
@@ -679,8 +679,11 @@ export default function ChatPanel() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Panel Footer: Input form */}
-        <div className="border-t border-border/60 p-3 bg-background/80 shrink-0">
+        {/* Panel Footer: Input form & Attribution */}
+        <div
+          className="border-t border-border/60 p-3 bg-background/80 shrink-0"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -702,11 +705,11 @@ export default function ChatPanel() {
                   }
                 }}
                 placeholder="Ask about places or directions..."
-                className="h-9 pr-7 text-xs bg-muted/40"
+                className="h-10 pr-7 text-xs bg-muted/40"
                 disabled={isStreaming}
               />
               {input.length > 400 && (
-                <span className="absolute right-2 top-2 text-[10px] text-muted-foreground font-mono">
+                <span className="absolute right-2 top-2.5 text-[10px] text-muted-foreground font-mono">
                   {500 - input.length}
                 </span>
               )}
@@ -718,8 +721,9 @@ export default function ChatPanel() {
                 size="sm"
                 variant="destructive"
                 onClick={() => stop()}
-                className="h-9 px-3 gap-1 cursor-pointer"
+                className="h-10 px-3 gap-1 cursor-pointer min-w-[40px]"
                 title="Stop generation"
+                aria-label="Stop generation"
               >
                 <Square className="h-3.5 w-3.5 fill-current" />
                 <span className="text-xs">Stop</span>
@@ -729,13 +733,16 @@ export default function ChatPanel() {
                 type="submit"
                 size="sm"
                 disabled={!input.trim()}
-                className="h-9 px-3 cursor-pointer"
+                className="h-10 w-10 p-0 cursor-pointer min-w-[40px] flex items-center justify-center shrink-0"
                 aria-label="Send message"
               >
                 <ArrowUp className="h-4 w-4" />
               </Button>
             )}
           </form>
+          <p className="text-[10px] text-muted-foreground/75 text-center mt-2 leading-tight">
+            Places: &copy; OpenStreetMap contributors. Ratings and reviews are AI-generated sample data.
+          </p>
         </div>
       </div>
     </>

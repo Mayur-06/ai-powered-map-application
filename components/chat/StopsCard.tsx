@@ -99,7 +99,7 @@ export default function StopsCard({
                 });
               }
             }}
-            className="flex items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5 text-xs text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
+            className="flex min-h-[36px] items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5 text-xs text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
           >
             <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground shadow-xs">
               {stop.order}
@@ -130,7 +130,8 @@ export default function StopsCard({
         size="sm"
         onClick={() => startNavigation()}
         disabled={isNavigating}
-        className="w-full gap-1.5 font-medium cursor-pointer"
+        className="w-full min-h-[40px] gap-1.5 font-medium cursor-pointer"
+        aria-label="Start multi-stop navigation"
       >
         <Navigation className="h-4 w-4" />
         {isNavigating ? 'Navigating...' : 'Start Navigation'}

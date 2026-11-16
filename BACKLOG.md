@@ -8,8 +8,7 @@ This file tracks features, ideas, and enhancements deferred to maintain scope di
 - Full Supabase Auth (OAuth / Google Login)
 - Saved trips and multi-route history
 - Advanced semantic search with pgvector (beyond keyword filters)
-- Revisit Turbopack and remove --webpack after the hackathon,
-- Remove or protect /api/health/db before final freeze.
+- Revisit Turbopack and remove --webpack after the hackathon.
 - Review text is synthetic sample data generated for demonstration purposes, and POI ratings are derived from these sample reviews.
 - Rate limit is per-instance on serverless; use a shared store for a stronger limit.
 

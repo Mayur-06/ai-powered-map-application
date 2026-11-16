@@ -127,10 +127,9 @@ export default function SearchBar({
           setSuggestions(data.suggestions || []);
           setIsOpen(true);
         }
-      } catch (err) {
+      } catch {
         if (!isCancelled) {
-          console.error('Suggest error:', err);
-          setError(err instanceof Error ? err.message : 'Error fetching suggestions');
+          setError('Unable to load suggestions. Please try again.');
           setSuggestions([]);
         }
       } finally {
@@ -213,9 +212,8 @@ export default function SearchBar({
         setIsOpen(false);
         setSuggestions([]);
       }
-    } catch (err) {
-      console.error('Retrieve error:', err);
-      setError(err instanceof Error ? err.message : 'Error retrieving place');
+    } catch {
+      setError('Unable to load this place. Please try another search.');
     } finally {
       setIsLoading(false);
       resetSessionToken();
@@ -258,10 +256,10 @@ export default function SearchBar({
             <button
               type="button"
               onClick={handleClear}
-              className="absolute right-2.5 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+              className="absolute right-1 flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
               aria-label="Clear search"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -271,6 +269,24 @@ export default function SearchBar({
             {error && (
               <div className="p-3 text-center text-xs text-destructive">
                 {error}
+              </div>
+            )}
+            {isLoading && visibleSuggestions.length === 0 && (
+              <div className="py-2 px-3 space-y-2.5">
+                <div className="flex items-center gap-2.5 py-1">
+                  <div className="h-4 w-4 rounded-full bg-muted animate-pulse shrink-0" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3.5 w-3/4 rounded bg-muted animate-pulse" />
+                    <div className="h-2.5 w-1/2 rounded bg-muted animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 py-1">
+                  <div className="h-4 w-4 rounded-full bg-muted animate-pulse shrink-0" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3.5 w-2/3 rounded bg-muted animate-pulse" />
+                    <div className="h-2.5 w-1/3 rounded bg-muted animate-pulse" />
+                  </div>
+                </div>
               </div>
             )}
             {!isLoading && !error && visibleSuggestions.length === 0 && debouncedQuery.trim().length >= 2 && (
@@ -285,7 +301,7 @@ export default function SearchBar({
                     key={item.id}
                     value={item.id}
                     onSelect={() => handleSelect(item)}
-                    className="flex items-start gap-2.5 py-2 px-2.5 rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
+                    className="flex min-h-[44px] items-start gap-2.5 py-2 px-2.5 rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
                   >
                     <MapPin className="h-4 w-4 shrink-0 text-primary mt-0.5" />
                     <div className="flex flex-col min-w-0 flex-1">

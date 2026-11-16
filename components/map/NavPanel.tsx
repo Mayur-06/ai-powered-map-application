@@ -165,8 +165,8 @@ export default function NavPanel() {
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       window.speechSynthesis.speak(utterance);
-    } catch (err) {
-      console.error('Speech error:', err);
+    } catch {
+      // Speech synthesis error or not permitted
     }
   }, []);
 
@@ -238,6 +238,9 @@ export default function NavPanel() {
   return (
     <div
       className="absolute bottom-6 left-4 right-4 sm:right-auto sm:w-84 sm:max-w-sm z-20 rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur-md transition-all"
+      style={{
+        bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+      }}
       role="region"
       aria-label="Navigation guidance"
     >
@@ -266,7 +269,7 @@ export default function NavPanel() {
                     startSimulation();
                   }
                 }}
-                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
+                className={`inline-flex min-h-[38px] items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
                   isSimulating
                     ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300'
                     : 'bg-muted border-border text-foreground hover:bg-muted/80'
@@ -295,7 +298,7 @@ export default function NavPanel() {
                   }
                   divert();
                 }}
-                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
+                className={`inline-flex min-h-[38px] items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
                   isDiverted
                     ? 'bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300'
                     : 'bg-muted border-border text-foreground hover:bg-muted/80'
@@ -314,7 +317,7 @@ export default function NavPanel() {
             <button
               type="button"
               onClick={handleToggleVoice}
-              className={`rounded-md p-1.5 transition-colors cursor-pointer border ${
+              className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors cursor-pointer border ${
                 voiceEnabled
                   ? 'bg-primary/10 border-primary/20 text-primary'
                   : 'bg-muted/50 border-transparent text-muted-foreground hover:text-foreground'
@@ -335,7 +338,7 @@ export default function NavPanel() {
           <button
             type="button"
             onClick={handleEndNavigation}
-            className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer border border-border"
+            className="inline-flex min-h-[38px] items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer border border-border"
             title="End navigation"
             aria-label="End navigation"
           >
@@ -363,10 +366,10 @@ export default function NavPanel() {
           <button
             type="button"
             onClick={() => setDismissedNoticeId(activeNotice.id)}
-            className="text-amber-700/60 hover:text-amber-900 dark:text-amber-300/60 dark:hover:text-amber-100 cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center shrink-0 text-amber-700/60 hover:text-amber-900 dark:text-amber-300/60 dark:hover:text-amber-100 cursor-pointer p-1"
             aria-label="Dismiss notice"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}

@@ -136,8 +136,8 @@ export default function MapView() {
         // Also update search bar text
         setSearchBarText(place.address || place.name);
       }
-    } catch (err) {
-      console.error('Reverse geocode error:', err);
+    } catch {
+      // Quietly ignore reverse geocode failures
     } finally {
       setIsReverseGeocoding(false);
     }
@@ -295,7 +295,7 @@ export default function MapView() {
         <button
           type="button"
           onClick={toggleMapStyle}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-muted transition-colors cursor-pointer"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-border bg-background/90 px-3.5 py-2 text-xs font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-muted transition-colors cursor-pointer"
           aria-label="Toggle map style"
         >
           {mapStyle === 'streets' ? (
@@ -365,10 +365,10 @@ export default function MapView() {
           <button
             type="button"
             onClick={() => setLocationError(null)}
-            className="shrink-0 p-0.5 hover:opacity-80 cursor-pointer"
+            className="flex h-10 w-10 items-center justify-center shrink-0 p-1 hover:opacity-80 cursor-pointer"
             aria-label="Dismiss error"
           >
-            <X className="h-3.5 w-3.5" style={{ width: '14px', height: '14px' }} />
+            <X className="h-4 w-4" style={{ width: '16px', height: '16px' }} />
           </button>
         </div>
       )}

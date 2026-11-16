@@ -72,8 +72,7 @@ export async function getPoiDetails(id: unknown): Promise<PoiDetailsResult> {
     ]);
 
     if (poiRes.error) {
-      console.error('Error fetching POI:', poiRes.error);
-      return { success: false, error: poiRes.error.message };
+      return { success: false, error: 'Could not load place details' };
     }
 
     if (!poiRes.data) {
@@ -81,8 +80,7 @@ export async function getPoiDetails(id: unknown): Promise<PoiDetailsResult> {
     }
 
     if (reviewsRes.error) {
-      console.error('Error fetching reviews:', reviewsRes.error);
-      return { success: false, error: reviewsRes.error.message };
+      return { success: false, error: 'Could not load reviews' };
     }
 
     const poi = poiRes.data;
@@ -110,9 +108,7 @@ export async function getPoiDetails(id: unknown): Promise<PoiDetailsResult> {
         summary,
       },
     };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown server error';
-    console.error('Unhandled error in getPoiDetails:', err);
-    return { success: false, error: message };
+  } catch {
+    return { success: false, error: 'Could not load place details' };
   }
 }

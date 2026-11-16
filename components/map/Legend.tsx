@@ -33,7 +33,7 @@ export default function Legend() {
 
   return (
     <div
-      className="absolute top-36 right-3 sm:top-auto sm:bottom-6 sm:right-4 z-20 flex flex-col items-end"
+      className="absolute top-36 right-3 sm:top-auto sm:bottom-9 sm:right-4 z-20 flex flex-col items-end"
       style={{
         zIndex: 20,
       }}
@@ -43,7 +43,7 @@ export default function Legend() {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/95 px-3 py-1.5 text-xs font-medium text-foreground shadow-md backdrop-blur-md hover:bg-muted transition-colors cursor-pointer"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border bg-background/95 px-3.5 py-2 text-xs font-medium text-foreground shadow-md backdrop-blur-md hover:bg-muted transition-colors cursor-pointer"
           aria-label="Open categories legend"
         >
           <Layers className="h-3.5 w-3.5 text-foreground" />
@@ -69,7 +69,7 @@ export default function Legend() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
               aria-label="Collapse legend"
             >
               <ChevronUp className="h-3.5 w-3.5" />
@@ -86,7 +86,7 @@ export default function Legend() {
                   key={cat.id}
                   type="button"
                   onClick={() => toggleCategory(cat.id)}
-                  className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer text-left ${
+                  className={`flex min-h-[36px] w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs transition-colors cursor-pointer text-left ${
                     isHidden
                       ? 'text-muted-foreground/50 hover:bg-muted/50'
                       : 'text-foreground hover:bg-muted/80'

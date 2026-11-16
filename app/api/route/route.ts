@@ -100,7 +100,6 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Error in /api/route:', error);
     const message =
       error instanceof Error && error.message.includes('MAPBOX_SECRET_TOKEN')
         ? 'Mapbox secret token is not configured on the server'

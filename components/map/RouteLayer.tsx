@@ -40,8 +40,8 @@ export default function RouteLayer() {
           maxZoom: 16,
         }
       );
-    } catch (err) {
-      console.error('Failed to fit bounds to route:', err);
+    } catch {
+      // Map may not be ready to fit bounds yet
     }
   }, [route, map]);
 

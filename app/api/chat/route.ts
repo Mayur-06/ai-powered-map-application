@@ -7,7 +7,7 @@ import {
   type UIMessage,
 } from 'ai';
 import { z } from 'zod';
-import { getModel } from '@/lib/ai/model';
+import { getModel, getFallbackModel } from '@/lib/ai/model';
 import { buildSystemPrompt } from '@/lib/ai/prompts';
 import { createTools } from '@/lib/ai/tools';
 import { userPrefsSchema, type UserPrefs } from '@/lib/prefs';
@@ -179,8 +179,25 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const isRetryableError = (err: unknown): boolean => {
+    if (APICallError.isInstance(err)) {
+      const status = err.statusCode ?? 500;
+      return status === 429 || status >= 500;
+    }
+    const message = err instanceof Error ? err.message : '';
+    return (
+      message.includes('429') ||
+      message.toLowerCase().includes('rate limit') ||
+      message.includes('500') ||
+      message.includes('503') ||
+      message.includes('504')
+    );
+  };
+
   try {
-    const model = getModel();
+    const primaryModel = getModel();
+    const fallbackModel = getFallbackModel();
+
     const tools = createTools({
       userLocation: parsed.data.context?.userLocation ?? null,
       bounds: parsed.data.context?.bounds ?? null,
@@ -190,19 +207,31 @@ export async function POST(request: NextRequest) {
       tools,
     });
 
-    const result = streamText({
-      model,
-      system: buildSystemPrompt({
-        userLocation: parsed.data.context?.userLocation ?? null,
-        bounds: parsed.data.context?.bounds ?? null,
-        prefs: validPrefs,
-      }),
-      messages: modelMessages,
-      tools,
-      stopWhen: stepCountIs(6),
-      maxOutputTokens: 400,
-      onError: () => 'An error occurred while generating the response. Please try again.',
-    });
+    const createStream = (m: ReturnType<typeof getModel>) =>
+      streamText({
+        model: m,
+        system: buildSystemPrompt({
+          userLocation: parsed.data.context?.userLocation ?? null,
+          bounds: parsed.data.context?.bounds ?? null,
+          prefs: validPrefs,
+        }),
+        messages: modelMessages,
+        tools,
+        stopWhen: stepCountIs(6),
+        maxOutputTokens: 400,
+        onError: () => 'An error occurred while generating the response. Please try again.',
+      });
+
+    let result;
+    try {
+      result = createStream(primaryModel);
+    } catch (primaryError: unknown) {
+      if (fallbackModel && isRetryableError(primaryError)) {
+        result = createStream(fallbackModel);
+      } else {
+        throw primaryError;
+      }
+    }
 
     return result.toUIMessageStreamResponse();
   } catch (error: unknown) {

@@ -174,9 +174,8 @@ export function useReroute(): UseRerouteReturn {
 
         // Calling setRoute updates the route in mapStore
         setRoute(newRoute);
-      } catch (err) {
+      } catch {
         if (requestIdRef.current === reqId) {
-          console.error('Rerouting request failed:', err);
           if (triggerReason === 'off-route') {
             addNotice('Could not find a new route');
           }
