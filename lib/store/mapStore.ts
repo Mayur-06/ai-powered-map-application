@@ -49,6 +49,12 @@ export interface Poi {
 
 export type MapStyleMode = 'streets' | 'dark';
 
+export interface MapNotice {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
 export interface MapState {
   userLocation: UserLocation | null;
   viewState: ViewState;
@@ -60,6 +66,7 @@ export interface MapState {
   routeMode: RouteMode;
   mapStyle: MapStyleMode;
   isNavigating: boolean;
+  notices: MapNotice[];
   prefs: UserPrefs | null;
   setUserLocation: (location: UserLocation | null) => void;
   setViewState: (viewState: ViewState) => void;
@@ -77,6 +84,8 @@ export interface MapState {
   toggleMapStyle: () => void;
   startNavigation: () => void;
   stopNavigation: () => void;
+  addNotice: (text: string) => void;
+  clearNotices: () => void;
   setPrefs: (prefs: UserPrefs | null) => void;
   clearPrefs: () => void;
 }
@@ -105,6 +114,7 @@ export const useMapStore = create<MapState>((set) => ({
   routeMode: 'drive',
   mapStyle: 'streets',
   isNavigating: false,
+  notices: [],
   prefs: null,
   setUserLocation: (location) => set({ userLocation: location }),
   setViewState: (viewState) => set({ viewState }),
@@ -134,6 +144,18 @@ export const useMapStore = create<MapState>((set) => ({
     })),
   startNavigation: () => set({ isNavigating: true }),
   stopNavigation: () => set({ isNavigating: false }),
+  addNotice: (text: string) =>
+    set((state) => ({
+      notices: [
+        ...state.notices,
+        {
+          id: `notice-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          text,
+          createdAt: Date.now(),
+        },
+      ].slice(-20),
+    })),
+  clearNotices: () => set({ notices: [] }),
   setPrefs: (prefs) => {
     if (prefs) {
       savePrefs(prefs);

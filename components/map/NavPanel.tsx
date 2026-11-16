@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useMapStore } from '@/lib/store/mapStore';
 import { usePosition } from '@/lib/store/usePosition';
+import { useReroute } from '@/lib/store/useReroute';
 import { getNavigationProgress, type NavigationResult } from '@/lib/mapbox/navigation';
 import {
   Navigation,
@@ -20,6 +21,9 @@ import {
   CheckCircle2,
   X,
   Clock,
+  CornerUpRight,
+  RefreshCw,
+  Info,
 } from 'lucide-react';
 
 function formatManeuverDistance(meters: number): string {
@@ -71,15 +75,40 @@ function getServerDebugSnapshot(): boolean {
 export default function NavPanel() {
   const route = useMapStore((state) => state.route);
   const stopNavigation = useMapStore((state) => state.stopNavigation);
+  const notices = useMapStore((state) => state.notices);
 
   const {
     position,
     isSimulating,
+    isDiverted,
     startSimulation,
     stopSimulation,
+    divert,
   } = usePosition();
 
+  const { isRerouting } = useReroute();
+
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [dismissedNoticeId, setDismissedNoticeId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+
+  // Latest notice banner: auto-hide after 8 seconds
+  const latestNotice = notices[notices.length - 1];
+
+  useEffect(() => {
+    if (!latestNotice) return;
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [latestNotice]);
+
+  const activeNotice =
+    latestNotice &&
+    latestNotice.id !== dismissedNoticeId &&
+    currentTime - latestNotice.createdAt < 8000
+      ? latestNotice
+      : null;
 
   // Feature detection via useSyncExternalStore for hydration-safe external state
   const hasSpeech = useSyncExternalStore(
@@ -173,6 +202,16 @@ export default function NavPanel() {
     }
   }, [voiceEnabled, navProgress.currentStepIndex, currentInstruction, speakText]);
 
+  // Speak new notices when voice is ON
+  const lastSpokenNoticeIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!voiceEnabled || !latestNotice) return;
+    if (lastSpokenNoticeIdRef.current !== latestNotice.id) {
+      lastSpokenNoticeIdRef.current = latestNotice.id;
+      speakText(latestNotice.text);
+    }
+  }, [voiceEnabled, latestNotice, speakText]);
+
   // Cleanup speech synthesis on unmount
   useEffect(() => {
     return () => {
@@ -215,37 +254,59 @@ export default function NavPanel() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Simulator button */}
+          {/* Simulator button & Divert button */}
           {showSimulator && (
-            <button
-              type="button"
-              onClick={() => {
-                if (isSimulating) {
-                  stopSimulation();
-                } else {
-                  startSimulation();
-                }
-              }}
-              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
-                isSimulating
-                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300'
-                  : 'bg-muted border-border text-foreground hover:bg-muted/80'
-              }`}
-              title={isSimulating ? 'Stop simulation' : 'Start simulation'}
-              aria-label={isSimulating ? 'Stop simulation' : 'Simulate route'}
-            >
-              {isSimulating ? (
-                <>
-                  <Square className="h-3 w-3 fill-current" />
-                  <span>Stop sim</span>
-                </>
-              ) : (
-                <>
-                  <Play className="h-3 w-3 fill-current" />
-                  <span>Simulate</span>
-                </>
-              )}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isSimulating) {
+                    stopSimulation();
+                  } else {
+                    startSimulation();
+                  }
+                }}
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
+                  isSimulating
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300'
+                    : 'bg-muted border-border text-foreground hover:bg-muted/80'
+                }`}
+                title={isSimulating ? 'Stop simulation' : 'Start simulation'}
+                aria-label={isSimulating ? 'Stop simulation' : 'Simulate route'}
+              >
+                {isSimulating ? (
+                  <>
+                    <Square className="h-3 w-3 fill-current" />
+                    <span>Stop sim</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-3 w-3 fill-current" />
+                    <span>Simulate</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isSimulating) {
+                    startSimulation();
+                  }
+                  divert();
+                }}
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
+                  isDiverted
+                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                    : 'bg-muted border-border text-foreground hover:bg-muted/80'
+                }`}
+                title={isDiverted ? 'Diverted (100m off-route)' : 'Divert 100m off-route'}
+                aria-label="Divert off-route"
+              >
+                <CornerUpRight className="h-3 w-3" />
+                <span>{isDiverted ? 'Diverted' : 'Divert'}</span>
+              </button>
+            </>
           )}
 
           {/* Voice toggle */}
@@ -283,6 +344,32 @@ export default function NavPanel() {
           </button>
         </div>
       </div>
+
+      {/* Rerouting In-Flight Banner */}
+      {isRerouting && (
+        <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs text-primary font-medium animate-pulse">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin shrink-0" />
+          <span>Rerouting...</span>
+        </div>
+      )}
+
+      {/* Latest Notice Banner (auto-hides after 8s) */}
+      {!isRerouting && activeNotice && (
+        <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate font-medium">{activeNotice.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissedNoticeId(activeNotice.id)}
+            className="text-amber-700/60 hover:text-amber-900 dark:text-amber-300/60 dark:hover:text-amber-100 cursor-pointer"
+            aria-label="Dismiss notice"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {/* Main Guidance Display */}
       {navProgress.arrived ? (

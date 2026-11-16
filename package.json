@@ -10,7 +10,8 @@
     "seed:pois": "tsx --env-file=.env.local scripts/seed-pois.ts",
     "gen:reviews": "tsx --env-file=.env.local scripts/generate-reviews.ts",
     "gen:summaries": "tsx --env-file=.env.local scripts/generate-summaries.ts",
-    "test:chat": "tsx --env-file=.env.local scripts/test-chat.ts"
+    "test:chat": "tsx --env-file=.env.local scripts/test-chat.ts",
+    "test:reroute": "tsx --env-file=.env.local scripts/test-reroute.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.120",

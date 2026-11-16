@@ -133,6 +133,7 @@ export default function ChatPanel() {
   const [hasSkippedOnboarding, setHasSkippedOnboarding] = useState(false);
   const [isEditingPrefs, setIsEditingPrefs] = useState(false);
   const isNavigating = useMapStore((state) => state.isNavigating);
+  const notices = useMapStore((state) => state.notices);
   const prefs = useMapStore((state) => state.prefs);
   const setPrefs = useMapStore((state) => state.setPrefs);
   const clearPrefs = useMapStore((state) => state.clearPrefs);
@@ -597,6 +598,20 @@ export default function ChatPanel() {
                   <span>Retry</span>
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* Muted Navigation System Notices */}
+          {notices.length > 0 && (
+            <div className="flex flex-col gap-1 py-1 px-2 my-1">
+              {notices.map((n) => (
+                <div
+                  key={n.id}
+                  className="text-center text-[11px] text-muted-foreground/70 italic"
+                >
+                  {n.text}
+                </div>
+              ))}
             </div>
           )}
 
