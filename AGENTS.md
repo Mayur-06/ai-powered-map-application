@@ -32,7 +32,7 @@ activation: always_on
   3. Auth
   4. Saved trips
   5. Semantic search (fall back to keyword filters)
-
+- **Honest verification.** Never write that something was observed, tested or passed unless the tool output in this session shows it. If a browser check did not complete, write 'NOT VERIFIED' for it. Never describe UI behavior from reading code as if you saw it.
 ## Prohibitions (DON'T)
 - **Do not refactor, rename files, restyle, or add features nobody asked for.**
 - **Do not add or use**:
