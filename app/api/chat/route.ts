@@ -11,6 +11,12 @@ import { getModel } from '@/lib/ai/model';
 import { buildSystemPrompt } from '@/lib/ai/prompts';
 import { createTools } from '@/lib/ai/tools';
 import { userPrefsSchema, type UserPrefs } from '@/lib/prefs';
+import {
+  rateLimit,
+  checkDailyCap,
+  incrementDailyCap,
+  getClientIp,
+} from '@/lib/rateLimit';
 
 const textPartSchema = z.object({
   type: z.literal('text'),
@@ -80,9 +86,64 @@ const chatRequestSchema = z
   .passthrough();
 
 export async function POST(request: NextRequest) {
+  // Check global daily cap
+  if (!checkDailyCap().allowed) {
+    return NextResponse.json(
+      {
+        error: 'daily_limit',
+        message: 'The demo has reached its daily limit. Please try again tomorrow.',
+      },
+      { status: 429 }
+    );
+  }
+
+  // Check client IP sliding-window rate limit
+  const clientIp = getClientIp(request);
+  const rateLimitResult = rateLimit(clientIp);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      {
+        error: 'rate_limited',
+        message: 'Too many requests. Please wait a bit and try again.',
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rateLimitResult.retryAfterSeconds),
+        },
+      }
+    );
+  }
+
+  // Reject any request body larger than 20 KB with 413
+  const contentLength = request.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > 20 * 1024) {
+    return NextResponse.json(
+      { error: 'payload_too_large', message: 'Request body exceeds 20 KB limit.' },
+      { status: 413 }
+    );
+  }
+
+  let rawBody: string;
+  try {
+    rawBody = await request.text();
+  } catch {
+    return NextResponse.json({ error: 'Failed to read request body' }, { status: 400 });
+  }
+
+  if (new TextEncoder().encode(rawBody).length > 20 * 1024) {
+    return NextResponse.json(
+      { error: 'payload_too_large', message: 'Request body exceeds 20 KB limit.' },
+      { status: 413 }
+    );
+  }
+
+  // Count valid request against daily cap
+  incrementDailyCap();
+
   let bodyJson: unknown;
   try {
-    bodyJson = await request.json();
+    bodyJson = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
   }

@@ -67,25 +67,81 @@ function getLatestContext() {
   };
 }
 
-function getFriendlyErrorMessage(err?: Error): string {
-  if (!err) return '';
-  const msg = err.message || '';
-  if (
-    msg.includes('429') ||
-    msg.toLowerCase().includes('rate limit') ||
-    msg.toLowerCase().includes('quota') ||
-    msg.toLowerCase().includes('busy')
-  ) {
-    return 'The AI service is currently busy. Please wait a moment and try again.';
+interface ChatErrorInfo {
+  message: string;
+  canRetry: boolean;
+}
+
+function parseChatError(err?: Error): ChatErrorInfo {
+  if (!err) return { message: '', canRetry: true };
+
+  const raw = err.message || (err as unknown as { responseBody?: string }).responseBody || '';
+
+  // Check structured JSON from response body
+  try {
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (data && typeof data === 'object') {
+      if (data.error === 'daily_limit' || data.message?.includes('daily limit')) {
+        return {
+          message: data.message || 'The demo has reached its daily limit. Please try again tomorrow.',
+          canRetry: false,
+        };
+      }
+      if (data.error === 'rate_limited' || data.message?.includes('Too many requests')) {
+        return {
+          message: data.message || 'Too many requests. Please wait a bit and try again.',
+          canRetry: true,
+        };
+      }
+      if (typeof data.message === 'string' && data.message) {
+        return {
+          message: data.message,
+          canRetry: true,
+        };
+      }
+    }
+  } catch {
+    // Non-JSON string
+  }
+
+  // Fallback checks on raw message
+  if (raw.includes('daily_limit') || raw.toLowerCase().includes('daily limit')) {
+    return {
+      message: 'The demo has reached its daily limit. Please try again tomorrow.',
+      canRetry: false,
+    };
+  }
+  if (raw.includes('rate_limited') || raw.toLowerCase().includes('too many requests')) {
+    return {
+      message: 'Too many requests. Please wait a bit and try again.',
+      canRetry: true,
+    };
   }
   if (
-    msg.toLowerCase().includes('network') ||
-    msg.toLowerCase().includes('failed to fetch') ||
-    msg.toLowerCase().includes('load failed')
+    raw.includes('429') ||
+    raw.toLowerCase().includes('rate limit') ||
+    raw.toLowerCase().includes('quota') ||
+    raw.toLowerCase().includes('busy')
   ) {
-    return 'Unable to connect to the AI service. Please check your network connection.';
+    return {
+      message: 'The AI service is currently busy. Please wait a moment and try again.',
+      canRetry: true,
+    };
   }
-  return 'Something went wrong while processing your request. Please try again.';
+  if (
+    raw.toLowerCase().includes('network') ||
+    raw.toLowerCase().includes('failed to fetch') ||
+    raw.toLowerCase().includes('load failed')
+  ) {
+    return {
+      message: 'Unable to connect to the AI service. Please check your network connection.',
+      canRetry: true,
+    };
+  }
+  return {
+    message: 'Something went wrong while processing your request. Please try again.',
+    canRetry: true,
+  };
 }
 
 interface ParsedTool {
@@ -578,28 +634,33 @@ export default function ChatPanel() {
           )}
 
           {/* Friendly Error Banner with Retry */}
-          {error && (
-            <div className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <p className="text-xs font-medium leading-snug">
-                  {getFriendlyErrorMessage(error)}
-                </p>
+          {error && (() => {
+            const errInfo = parseChatError(error);
+            return (
+              <div className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p className="text-xs font-medium leading-snug">
+                    {errInfo.message}
+                  </p>
+                </div>
+                {errInfo.canRetry && (
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => regenerate()}
+                      className="h-7 gap-1 text-[11px] border-destructive/40 text-destructive hover:bg-destructive/20 cursor-pointer"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      <span>Retry</span>
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => regenerate()}
-                  className="h-7 gap-1 text-[11px] border-destructive/40 text-destructive hover:bg-destructive/20 cursor-pointer"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  <span>Retry</span>
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Muted Navigation System Notices */}
           {notices.length > 0 && (
