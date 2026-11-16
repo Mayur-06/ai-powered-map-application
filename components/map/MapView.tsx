@@ -437,10 +437,18 @@ export default function MapView() {
                     style={
                       pinColor
                         ? { color: pinColor, fill: pinColor }
+                        : marker.order !== undefined
+                        ? { color: '#2563eb', fill: '#3b82f6' }
                         : { color: '#dc2626', fill: '#ef4444' }
                     }
                   />
-                  <span className="absolute top-2 h-2 w-2 rounded-full bg-white shadow-xs" />
+                  {marker.order !== undefined ? (
+                    <span className="absolute top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-slate-900 shadow-xs">
+                      {marker.order}
+                    </span>
+                  ) : (
+                    <span className="absolute top-2 h-2 w-2 rounded-full bg-white shadow-xs" />
+                  )}
                 </div>
                 {marker.title && (
                   <span className="mt-0.5 rounded border border-border bg-background/95 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-xs whitespace-nowrap max-w-[180px] truncate">

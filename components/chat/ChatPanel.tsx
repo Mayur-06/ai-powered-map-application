@@ -28,6 +28,7 @@ import {
 } from '@/lib/ai/applyToolResult';
 import PlaceCard, { type PlaceItem } from '@/components/chat/PlaceCard';
 import RouteCard from '@/components/chat/RouteCard';
+import StopsCard, { type StopItem } from '@/components/chat/StopsCard';
 
 const EXAMPLE_PROMPTS = [
   'Find a hospital near me',
@@ -517,6 +518,40 @@ export default function ChatPanel() {
                                 destination={destination}
                                 distanceM={distanceM}
                                 durationS={durationS}
+                                mode={mode}
+                              />
+                            </div>
+                          );
+                        }
+
+                        // Completed optimizeStops tool: render StopsCard
+                        if (
+                          parsedTool.toolName === 'optimizeStops' &&
+                          parsedTool.state === 'output-available' &&
+                          parsedTool.output?.orderedStops
+                        ) {
+                          const orderedStops = (Array.isArray(parsedTool.output.orderedStops)
+                            ? parsedTool.output.orderedStops
+                            : []) as StopItem[];
+                          const totalDistanceM =
+                            typeof parsedTool.output.totalDistanceM === 'number'
+                              ? parsedTool.output.totalDistanceM
+                              : undefined;
+                          const totalDurationS =
+                            typeof parsedTool.output.totalDurationS === 'number'
+                              ? parsedTool.output.totalDurationS
+                              : undefined;
+                          const mode =
+                            typeof parsedTool.output.mode === 'string'
+                              ? parsedTool.output.mode
+                              : undefined;
+
+                          return (
+                            <div key={idx} className="w-full mt-1">
+                              <StopsCard
+                                orderedStops={orderedStops}
+                                totalDistanceM={totalDistanceM}
+                                totalDurationS={totalDurationS}
                                 mode={mode}
                               />
                             </div>

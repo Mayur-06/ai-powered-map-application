@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       }),
       messages: modelMessages,
       tools,
-      stopWhen: stepCountIs(4),
+      stopWhen: stepCountIs(6),
       maxOutputTokens: 400,
       onError: () => 'An error occurred while generating the response. Please try again.',
     });

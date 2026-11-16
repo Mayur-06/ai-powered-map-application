@@ -31,12 +31,21 @@ interface DestinationResult {
   lat?: number;
 }
 
+interface OrderedStopItem {
+  order: number;
+  id: string;
+  name: string;
+}
+
 interface ToolOutputSummary {
   error?: string;
   places?: PlaceResultItem[];
   destination?: DestinationResult;
   distanceM?: number;
   durationS?: number;
+  totalDistanceM?: number;
+  totalDurationS?: number;
+  orderedStops?: OrderedStopItem[];
   mode?: string;
   centerUsed?: string;
   note?: string;
@@ -52,6 +61,12 @@ function summarizeToolOutput(output: unknown): string {
   if (!output || typeof output !== 'object') return String(output);
   const out = output as ToolOutputSummary;
   if (out.error) return `Error: ${out.error}`;
+  if (Array.isArray(out.orderedStops)) {
+    const list = out.orderedStops.map((s) => `${s.order}. ${s.name}`).join(' -> ');
+    const durMin =
+      out.totalDurationS !== undefined ? `~${Math.round(out.totalDurationS / 60)} min` : '';
+    return `Optimized multi-stop (${list}): ${out.totalDistanceM ?? '--'}m, ${durMin} (${out.mode || 'drive'})`;
+  }
   if (out.summary !== undefined) {
     const sum = out.summary as {
       vibe?: string;
@@ -179,6 +194,23 @@ async function sleep(ms: number) {
 async function main() {
   const runAll = process.argv.includes('--all');
   const runDay51 = process.argv.includes('--day5-1');
+  const runDay53 = process.argv.includes('--day5-3');
+  const runDay61 = process.argv.includes('--day6-1') || (!runAll && !runDay51 && !runDay53);
+
+  if (runDay61) {
+    console.log('Starting Day 6.1 Multi-Stop Route Optimization Chat Test...');
+    console.log(
+      `Context: Pari Chowk (lng=${pariChowkContext.userLocation?.lng}, lat=${pariChowkContext.userLocation?.lat})\n`
+    );
+    await streamQuery(
+      'I need to stop at a pharmacy and an ATM, then go to a hospital',
+      pariChowkContext
+    );
+    console.log('\n========================================');
+    console.log('Test query finished.');
+    console.log('========================================');
+    return;
+  }
 
   if (runAll) {
     console.log('Starting full Chat Tools Test Suite...');
@@ -212,27 +244,27 @@ async function main() {
     );
     await streamQuery('what do people say about Nimt Hospital?', pariChowkContext);
     return;
+  } else if (runDay53) {
+    // Day 5.3 Preferences and Personalized Ranking Test
+    console.log('Starting Day 5.3 Preferences & Personalized Ranking Chat Test...');
+    const prefsContext: ChatContext = {
+      ...pariChowkContext,
+      prefs: {
+        interests: ['park'],
+        budget: 'any',
+        transport: 'walk',
+      },
+    };
+    console.log(
+      `Context: Pari Chowk (lng=${prefsContext.userLocation?.lng}, lat=${prefsContext.userLocation?.lat}) with prefs: interests=['park'], budget='any', transport='walk'\n`
+    );
+
+    await streamQuery('what should I do nearby?', prefsContext);
+
+    console.log('\n========================================');
+    console.log('Test query finished.');
+    console.log('========================================');
   }
-
-  // Day 5.3 Preferences and Personalized Ranking Test
-  console.log('Starting Day 5.3 Preferences & Personalized Ranking Chat Test...');
-  const prefsContext: ChatContext = {
-    ...pariChowkContext,
-    prefs: {
-      interests: ['park'],
-      budget: 'any',
-      transport: 'walk',
-    },
-  };
-  console.log(
-    `Context: Pari Chowk (lng=${prefsContext.userLocation?.lng}, lat=${prefsContext.userLocation?.lat}) with prefs: interests=['park'], budget='any', transport='walk'\n`
-  );
-
-  await streamQuery('what should I do nearby?', prefsContext);
-
-  console.log('\n========================================');
-  console.log('Test query finished.');
-  console.log('========================================');
 }
 
 main().catch((err) => {

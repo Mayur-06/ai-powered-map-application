@@ -2,7 +2,8 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import distance from '@turf/distance';
 import { createServerClient } from '@/lib/supabase/server';
-import { getDirections, type RouteMode } from '@/lib/mapbox/directions';
+import { getDirections, getMultiStopRoute, type RouteMode } from '@/lib/mapbox/directions';
+import { optimizeTrip } from '@/lib/mapbox/optimization';
 import { INITIAL_VIEW_STATE } from '@/lib/store/mapStore';
 import type { UserPrefs } from '@/lib/prefs';
 import type { CategoryId } from '@/lib/categories';
@@ -98,6 +99,19 @@ const getRouteInputSchema = z.object({
     .enum(['drive', 'walk', 'cycle'])
     .optional()
     .describe('Travel mode: drive, walk, or cycle (optional; defaults to user preferred transport or drive)'),
+});
+
+const optimizeStopsInputSchema = z.object({
+  poiIds: z
+    .array(z.string().uuid('Each stop must be a valid POI UUID from searchPlaces'))
+    .min(2, 'Must provide at least 2 POI IDs to optimize stops')
+    .max(5, 'Maximum of 5 stops can be optimized')
+    .describe('Array of 2 to 5 POI UUIDs to optimize stops for, selected from searchPlaces results'),
+  mode: z
+    .enum(['drive', 'walk', 'cycle'])
+    .optional()
+    .default('drive')
+    .describe('Travel mode: drive, walk, or cycle (default drive)'),
 });
 
 const mapControlInputSchema = z.object({
@@ -364,6 +378,137 @@ export function createTools(context: ToolContext) {
           type: 'json',
           value: {
             error: 'error' in output ? output.error : 'Route calculation failed',
+          },
+        };
+      },
+    }),
+
+    optimizeStops: tool({
+      description:
+        'Optimize the visiting order of 2 to 5 places returned by searchPlaces, starting from the user current location, and calculate the multi-stop navigation route.',
+      inputSchema: optimizeStopsInputSchema,
+      execute: async (input) => {
+        try {
+          if (!context?.userLocation) {
+            return { error: 'no_user_location' };
+          }
+
+          if (!Array.isArray(input.poiIds) || input.poiIds.length < 2 || input.poiIds.length > 5) {
+            return { error: 'invalid_stops_count' };
+          }
+
+          const supabase = createServerClient();
+          const { data: pois, error: poisError } = await supabase
+            .from('pois')
+            .select('id, name, geom')
+            .in('id', input.poiIds);
+
+          if (poisError || !pois || pois.length === 0) {
+            return { error: 'poi_not_found' };
+          }
+
+          const poiMap = new Map<string, { id: string; name: string; lng: number; lat: number }>();
+          for (const p of pois) {
+            const coords = parsePointGeom(p.geom);
+            if (coords) {
+              poiMap.set(p.id, {
+                id: p.id,
+                name: p.name,
+                lng: coords.lng,
+                lat: coords.lat,
+              });
+            }
+          }
+
+          const resolvedStops: { id: string; name: string; lng: number; lat: number }[] = [];
+          for (const id of input.poiIds) {
+            const resolved = poiMap.get(id);
+            if (!resolved) {
+              return { error: 'poi_not_found' };
+            }
+            resolvedStops.push(resolved);
+          }
+
+          const routeMode: RouteMode = input.mode ?? context?.prefs?.transport ?? 'drive';
+
+          // Call Mapbox Optimization API to obtain visiting order
+          const optRes = await optimizeTrip({
+            start: context.userLocation,
+            stops: resolvedStops.map((s) => ({ lng: s.lng, lat: s.lat })),
+            mode: routeMode,
+          });
+
+          if (!optRes.success) {
+            return { error: optRes.error };
+          }
+
+          // Order the stops according to the optimization result
+          const orderedStops = optRes.data.order.map((stopIndex, i) => {
+            const stop = resolvedStops[stopIndex];
+            return {
+              order: i + 1,
+              id: stop.id,
+              name: stop.name,
+              lng: stop.lng,
+              lat: stop.lat,
+            };
+          });
+
+          // Route through the ordered waypoints: origin + ordered stops
+          const waypoints = [
+            context.userLocation,
+            ...orderedStops.map((s) => ({ lng: s.lng, lat: s.lat })),
+          ];
+
+          const route = await getMultiStopRoute({
+            waypoints,
+            mode: routeMode,
+          });
+
+          if (!route) {
+            return { error: 'no_route_found' };
+          }
+
+          return {
+            orderedStops,
+            totalDistanceM: Math.round(route.distance),
+            totalDurationS: Math.round(route.duration),
+            mode: routeMode,
+            route: {
+              geometry: route.geometry,
+              distance: Math.round(route.distance),
+              duration: Math.round(route.duration),
+              mode: routeMode,
+              steps: route.steps,
+              legs: route.legs,
+            },
+            legs: route.legs,
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to optimize stops';
+          return { error: msg };
+        }
+      },
+      toModelOutput: ({ output }) => {
+        if ('orderedStops' in output && Array.isArray(output.orderedStops)) {
+          return {
+            type: 'json',
+            value: {
+              orderedStops: output.orderedStops.map((s: { order: number; id: string; name: string }) => ({
+                order: s.order,
+                id: s.id,
+                name: s.name,
+              })),
+              totalDistanceM: output.totalDistanceM,
+              totalDurationS: output.totalDurationS,
+              mode: output.mode,
+            },
+          };
+        }
+        return {
+          type: 'json',
+          value: {
+            error: 'error' in output ? output.error : 'Optimization failed',
           },
         };
       },

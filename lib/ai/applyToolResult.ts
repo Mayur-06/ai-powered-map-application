@@ -36,6 +36,23 @@ interface GetRouteOutput {
   steps?: RouteResult['steps'];
 }
 
+interface OptimizeStopsOutput {
+  error?: string;
+  orderedStops?: {
+    order: number;
+    id: string;
+    name: string;
+    lng: number;
+    lat: number;
+    category?: string;
+  }[];
+  totalDistanceM?: number;
+  totalDurationS?: number;
+  mode?: 'drive' | 'walk' | 'cycle';
+  route?: RouteResult;
+  legs?: RouteResult['legs'];
+}
+
 interface MapControlOutput {
   error?: string;
   action?:
@@ -275,6 +292,80 @@ export async function applyToolResult(toolName: string, output: unknown): Promis
 
     case 'getUserContext': {
       // Nothing visible
+      break;
+    }
+
+    case 'optimizeStops': {
+      const out = output as OptimizeStopsOutput;
+      const orderedStops = Array.isArray(out.orderedStops) ? out.orderedStops : [];
+      const mode = out.mode || 'drive';
+      useMapStore.getState().setRouteMode(mode);
+
+      // 1. Resolve coordinates for all stops (from payload or recentPlacesCache)
+      const resolvedStops: {
+        order: number;
+        id: string;
+        name: string;
+        lng: number;
+        lat: number;
+        category?: string;
+      }[] = [];
+
+      for (const stop of orderedStops) {
+        const cached = recentPlacesCache.get(stop.id);
+        const lng = stop.lng ?? cached?.lng;
+        const lat = stop.lat ?? cached?.lat;
+        if (lng !== undefined && lat !== undefined) {
+          resolvedStops.push({
+            order: stop.order,
+            id: stop.id,
+            name: stop.name || cached?.name || 'Stop',
+            lng,
+            lat,
+            category: stop.category || cached?.category,
+          });
+        }
+      }
+
+      // 2. Clear previous / single-pin markers and show numbered markers (1, 2, 3...)
+      const numberedMarkers: MarkerItem[] = resolvedStops.map((stop) => ({
+        id: stop.id,
+        longitude: stop.lng,
+        latitude: stop.lat,
+        title: stop.name,
+        category: stop.category,
+        order: stop.order,
+      }));
+
+      useMapStore.getState().setMarkers(numberedMarkers);
+
+      // 3. Draw route with the existing route layer & fit map to it
+      if (out.route) {
+        useMapStore.getState().setRoute(out.route);
+      } else if (resolvedStops.length >= 2) {
+        // Compact version arrived - fetch multi-stop RouteResult through /api/route
+        const userLoc = useMapStore.getState().userLocation;
+        if (userLoc) {
+          try {
+            const waypointsStr = [
+              `${userLoc.longitude},${userLoc.latitude}`,
+              ...resolvedStops.map((s) => `${s.lng},${s.lat}`),
+            ].join(';');
+
+            const res = await fetch(
+              `/api/route?waypoints=${encodeURIComponent(waypointsStr)}&mode=${mode}`
+            );
+            if (res.ok) {
+              const data = (await res.json()) as { route?: RouteResult };
+              if (data.route) {
+                useMapStore.getState().setRoute(data.route);
+              }
+            }
+          } catch (err) {
+            console.error('Failed to fetch full multi-stop route in applyToolResult:', err);
+          }
+        }
+      }
       break;
     }
 

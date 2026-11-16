@@ -28,6 +28,7 @@ export interface MarkerItem {
   latitude: number;
   title?: string;
   category?: string;
+  order?: number;
 }
 
 export interface Poi {

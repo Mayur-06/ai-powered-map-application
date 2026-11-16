@@ -19,17 +19,29 @@ export interface RouteGeometry {
   coordinates: [number, number][];
 }
 
+export interface RouteLeg {
+  distance: number;
+  duration: number;
+  steps?: RouteStep[];
+}
+
 export interface RouteResult {
   geometry: RouteGeometry;
   distance: number;
   duration: number;
   mode: RouteMode;
   steps: RouteStep[];
+  legs?: RouteLeg[];
 }
 
 export interface DirectionsOptions {
   origin: [number, number] | { lng: number; lat: number };
   destination: [number, number] | { lng: number; lat: number };
+  mode?: RouteMode;
+}
+
+export interface MultiStopDirectionsOptions {
+  waypoints: ([number, number] | { lng: number; lat: number })[];
   mode?: RouteMode;
 }
 
@@ -55,21 +67,19 @@ function normalizeCoords(coord: [number, number] | { lng: number; lat: number })
 }
 
 /**
- * Server-side function to fetch directions from Mapbox Directions API.
- * Uses only MAPBOX_SECRET_TOKEN and returns a sanitized, typed RouteResult or null.
+ * Shared internal helper to route through an ordered list of 2 to 6 coordinates.
  */
-export async function getDirections({
-  origin,
-  destination,
-  mode = 'drive',
-}: DirectionsOptions): Promise<RouteResult | null> {
+async function fetchDirectionsRoute(
+  coords: [number, number][],
+  mode: RouteMode = 'drive'
+): Promise<RouteResult | null> {
+  if (coords.length < 2 || coords.length > 6) {
+    return null;
+  }
+
   const token = getSecretToken();
-
-  const [origLng, origLat] = normalizeCoords(origin);
-  const [destLng, destLat] = normalizeCoords(destination);
-
   const profile = PROFILE_MAP[mode] || PROFILE_MAP.drive;
-  const coordinates = `${origLng},${origLat};${destLng},${destLat}`;
+  const coordinates = coords.map(([lng, lat]) => `${lng},${lat}`).join(';');
 
   const url = new URL(`https://api.mapbox.com/directions/v5/${profile}/${coordinates}`);
   url.searchParams.set('geometries', 'geojson');
@@ -98,8 +108,11 @@ export async function getDirections({
   const primaryRoute = data.routes[0];
 
   const steps: RouteStep[] = [];
+  const legs: RouteLeg[] = [];
+
   if (Array.isArray(primaryRoute.legs)) {
     for (const leg of primaryRoute.legs) {
+      const legSteps: RouteStep[] = [];
       if (Array.isArray(leg.steps)) {
         for (const step of leg.steps) {
           const rawLoc = step.maneuver?.location;
@@ -108,7 +121,7 @@ export async function getDirections({
               ? [Number(rawLoc[0]), Number(rawLoc[1])]
               : [0, 0];
 
-          steps.push({
+          const routeStep: RouteStep = {
             instruction: step.maneuver?.instruction || step.name || '',
             distance: typeof step.distance === 'number' ? step.distance : 0,
             duration: typeof step.duration === 'number' ? step.duration : 0,
@@ -118,9 +131,16 @@ export async function getDirections({
               modifier: step.maneuver?.modifier,
               location: maneuverLocation,
             },
-          });
+          };
+          steps.push(routeStep);
+          legSteps.push(routeStep);
         }
       }
+      legs.push({
+        distance: typeof leg.distance === 'number' ? leg.distance : 0,
+        duration: typeof leg.duration === 'number' ? leg.duration : 0,
+        steps: legSteps,
+      });
     }
   }
 
@@ -130,5 +150,35 @@ export async function getDirections({
     duration: typeof primaryRoute.duration === 'number' ? primaryRoute.duration : 0,
     mode,
     steps,
+    legs,
   };
+}
+
+/**
+ * Server-side function to fetch directions between origin and destination from Mapbox Directions API.
+ * Uses only MAPBOX_SECRET_TOKEN and returns a sanitized, typed RouteResult or null.
+ */
+export async function getDirections({
+  origin,
+  destination,
+  mode = 'drive',
+}: DirectionsOptions): Promise<RouteResult | null> {
+  const orig = normalizeCoords(origin);
+  const dest = normalizeCoords(destination);
+  return fetchDirectionsRoute([orig, dest], mode);
+}
+
+/**
+ * Server-side function to fetch directions through an ordered list of waypoints (start plus stops, up to 6 coordinates).
+ * Returns the existing RouteResult shape plus per-leg distance and duration.
+ */
+export async function getMultiStopRoute({
+  waypoints,
+  mode = 'drive',
+}: MultiStopDirectionsOptions): Promise<RouteResult | null> {
+  if (!Array.isArray(waypoints) || waypoints.length < 2 || waypoints.length > 6) {
+    return null;
+  }
+  const normalized = waypoints.map(normalizeCoords);
+  return fetchDirectionsRoute(normalized, mode);
 }
