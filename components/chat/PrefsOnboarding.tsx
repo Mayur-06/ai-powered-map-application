@@ -64,8 +64,9 @@ export default function PrefsOnboarding({
   };
 
   return (
-    <div className="rounded-xl border border-border/70 bg-card/95 p-3.5 shadow-sm text-left">
-      <div className="flex items-center justify-between pb-2.5 border-b border-border/50">
+    <div className="flex flex-col h-full max-h-full rounded-xl border border-border/70 bg-card/95 shadow-sm text-left overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-amber-500 fill-amber-400" />
           <h4 className="text-xs font-semibold text-foreground">
@@ -77,7 +78,7 @@ export default function PrefsOnboarding({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={onCancel}
             aria-label="Close preferences"
           >
@@ -86,14 +87,15 @@ export default function PrefsOnboarding({
         )}
       </div>
 
-      <div className="mt-3 space-y-3">
+      {/* Scrollable Content Body */}
+      <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-2.5 min-h-0 text-xs">
         {/* Question 1: Interests */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-medium text-foreground">
-              Interests <span className="text-muted-foreground font-normal">(choose up to 4)</span>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold text-foreground">
+              Interests <span className="text-muted-foreground font-normal">(up to 4)</span>
             </span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground font-mono">
               {selectedInterests.length}/4
             </span>
           </div>
@@ -106,14 +108,14 @@ export default function PrefsOnboarding({
                   key={cat.id}
                   type="button"
                   onClick={() => toggleInterest(cat.id)}
-                  className={`flex min-h-[40px] items-center gap-1.5 px-3 py-2 rounded-full text-xs transition-all cursor-pointer border ${
+                  className={`flex h-10 min-h-[40px] items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all cursor-pointer border ${
                     isSelected
-                      ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-xs'
                       : 'bg-muted/50 border-border/70 text-foreground hover:bg-muted hover:border-primary/40'
                   }`}
                   aria-pressed={isSelected}
                 >
-                  <Icon className="h-3 w-3 shrink-0" />
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span>{cat.label}</span>
                 </button>
               );
@@ -123,7 +125,7 @@ export default function PrefsOnboarding({
 
         {/* Question 2: Budget */}
         <div>
-          <span className="block text-[11px] font-medium text-foreground mb-1.5">
+          <span className="block text-[11px] font-semibold text-foreground mb-1">
             Budget
           </span>
           <div className="flex gap-1.5">
@@ -134,9 +136,9 @@ export default function PrefsOnboarding({
                   key={opt.id}
                   type="button"
                   onClick={() => setSelectedBudget(opt.id)}
-                  className={`flex-1 min-h-[40px] py-2 px-2.5 rounded-lg text-xs text-center transition-all cursor-pointer border ${
+                  className={`flex-1 h-10 min-h-[40px] py-1.5 px-2 rounded-lg text-xs sm:text-sm font-medium text-center transition-all cursor-pointer border flex items-center justify-center ${
                     isSelected
-                      ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-xs'
                       : 'bg-muted/50 border-border/70 text-foreground hover:bg-muted hover:border-primary/40'
                   }`}
                   aria-pressed={isSelected}
@@ -150,7 +152,7 @@ export default function PrefsOnboarding({
 
         {/* Question 3: Transport */}
         <div>
-          <span className="block text-[11px] font-medium text-foreground mb-1.5">
+          <span className="block text-[11px] font-semibold text-foreground mb-1">
             Transport mode
           </span>
           <div className="flex gap-1.5">
@@ -161,9 +163,9 @@ export default function PrefsOnboarding({
                   key={opt.id}
                   type="button"
                   onClick={() => setSelectedTransport(opt.id)}
-                  className={`flex-1 min-h-[40px] py-2 px-2.5 rounded-lg text-xs text-center transition-all cursor-pointer border ${
+                  className={`flex-1 h-10 min-h-[40px] py-1.5 px-2 rounded-lg text-xs sm:text-sm font-medium text-center transition-all cursor-pointer border flex items-center justify-center ${
                     isSelected
-                      ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-xs'
                       : 'bg-muted/50 border-border/70 text-foreground hover:bg-muted hover:border-primary/40'
                   }`}
                   aria-pressed={isSelected}
@@ -176,17 +178,17 @@ export default function PrefsOnboarding({
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-3.5 pt-2.5 border-t border-border/50 flex items-center justify-between gap-2">
+      {/* Pinned Action Buttons Footer */}
+      <div className="shrink-0 px-3.5 py-2.5 border-t border-border/50 bg-card/95 flex items-center justify-between gap-2">
         {isEditing ? (
           <>
             {onClear && initialPrefs && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={onClear}
-                className="min-h-[40px] px-3 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer gap-1"
+                className="h-10 min-h-[40px] px-3 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer gap-1"
                 aria-label="Clear all preferences"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -200,7 +202,7 @@ export default function PrefsOnboarding({
                   variant="ghost"
                   size="sm"
                   onClick={onCancel}
-                  className="min-h-[40px] px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="h-10 min-h-[40px] px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -209,7 +211,7 @@ export default function PrefsOnboarding({
                 type="button"
                 size="sm"
                 onClick={handleSave}
-                className="min-h-[40px] px-3.5 text-xs cursor-pointer gap-1"
+                className="h-10 min-h-[40px] px-4 text-xs cursor-pointer gap-1.5 font-medium"
               >
                 <Check className="h-3.5 w-3.5" />
                 Save
@@ -224,7 +226,7 @@ export default function PrefsOnboarding({
                 variant="ghost"
                 size="sm"
                 onClick={onSkip}
-                className="min-h-[40px] px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                className="h-10 min-h-[40px] px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 Skip
               </Button>
@@ -233,7 +235,7 @@ export default function PrefsOnboarding({
               type="button"
               size="sm"
               onClick={handleSave}
-              className="min-h-[40px] px-3.5 text-xs ml-auto cursor-pointer gap-1"
+              className="h-10 min-h-[40px] px-4 text-xs ml-auto cursor-pointer gap-1.5 font-medium"
             >
               <Check className="h-3.5 w-3.5" />
               Save Preferences

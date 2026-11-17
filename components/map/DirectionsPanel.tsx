@@ -126,7 +126,7 @@ export default function DirectionsPanel() {
 
   return (
     <div
-      className="absolute bottom-6 left-4 right-4 sm:right-auto sm:w-84 sm:max-w-sm z-20 rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur-md transition-all"
+      className="absolute bottom-6 left-4 right-4 sm:right-auto sm:w-84 sm:max-w-sm z-20 max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur-md transition-all"
       style={{
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
         bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',

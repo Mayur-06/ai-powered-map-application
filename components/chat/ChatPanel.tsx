@@ -329,13 +329,13 @@ export default function ChatPanel() {
         className={`fixed sm:absolute z-30 flex flex-col bg-background/95 backdrop-blur-md border border-border shadow-2xl transition-all duration-300 ease-in-out ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none scale-95'
         } ${
-          // Mobile (<640px): bottom sheet, docked above NavPanel when navigating
+          // Mobile (<640px): bottom sheet, capped at about 60dvh; docked above NavPanel when navigating
           isNavigating
-            ? 'bottom-[224px] left-2 right-2 max-h-[calc(100vh-290px)] rounded-2xl'
-            : 'bottom-0 left-0 right-0 max-h-[65vh] rounded-t-2xl sm:rounded-2xl'
+            ? 'bottom-[232px] left-2 right-2 max-h-[calc(100dvh-290px)] rounded-2xl'
+            : 'bottom-0 left-0 right-0 h-[60dvh] max-h-[60dvh] rounded-t-2xl sm:rounded-2xl'
         } ${
           // Desktop (>=640px): side panel positioned to avoid Legend, SearchBar and NavPanel
-          'sm:bottom-auto sm:top-36 sm:right-4 sm:left-auto sm:w-96 sm:h-[calc(100vh-420px)] sm:min-h-[380px] sm:max-h-[600px]'
+          'sm:bottom-auto sm:top-36 sm:right-4 sm:left-auto sm:w-96 sm:h-[calc(100dvh-420px)] sm:min-h-[380px] sm:max-h-[600px]'
         }`}
         style={!isOpen ? { display: 'none' } : undefined}
         role="dialog"
@@ -401,9 +401,9 @@ export default function ChatPanel() {
           </div>
         </div>
 
-        {/* Preferences Editor (when opened via header) */}
-        {isEditingPrefs && (
-          <div className="border-b border-border/60 bg-muted/20 p-3 shrink-0">
+        {/* Body: Preferences Editor OR Messages List */}
+        {isEditingPrefs ? (
+          <div className="flex-1 min-h-0 p-3 overflow-hidden flex flex-col">
             <PrefsOnboarding
               initialPrefs={prefs}
               isEditing={true}
@@ -418,23 +418,22 @@ export default function ChatPanel() {
               onCancel={() => setIsEditingPrefs(false)}
             />
           </div>
-        )}
-
-        {/* Messages Scroll Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs min-h-0">
-          {messages.length === 0 ? (
-            !prefs && !hasSkippedOnboarding && !isEditingPrefs ? (
-              <div className="py-1">
-                <PrefsOnboarding
-                  initialPrefs={prefs}
-                  isEditing={false}
-                  onSave={(newPrefs) => {
-                    setPrefs(newPrefs);
-                  }}
-                  onSkip={() => setHasSkippedOnboarding(true)}
-                />
-              </div>
-            ) : (
+        ) : (
+          /* Messages Scroll Area */
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs min-h-0">
+            {messages.length === 0 ? (
+              !prefs && !hasSkippedOnboarding ? (
+                <div className="h-full py-1">
+                  <PrefsOnboarding
+                    initialPrefs={prefs}
+                    isEditing={false}
+                    onSave={(newPrefs) => {
+                      setPrefs(newPrefs);
+                    }}
+                    onSkip={() => setHasSkippedOnboarding(true)}
+                  />
+                </div>
+              ) : (
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2.5">
                   <MessageSquare className="h-5 w-5" />
@@ -678,6 +677,7 @@ export default function ChatPanel() {
 
           <div ref={messagesEndRef} />
         </div>
+      )}
 
         {/* Panel Footer: Input form & Attribution */}
         <div

@@ -266,8 +266,8 @@ export default function MapView() {
   if (!token) {
     return (
       <div
-        className="flex h-screen w-screen items-center justify-center bg-muted/40 p-6"
-        style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        className="flex h-[100dvh] w-screen items-center justify-center bg-muted/40 p-6"
+        style={{ width: '100vw', height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <div className="max-w-md rounded-lg border border-destructive/40 bg-background p-6 text-center shadow-lg">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
@@ -284,8 +284,8 @@ export default function MapView() {
 
   return (
     <div
-      className="relative h-screen w-screen overflow-hidden"
-      style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}
+      className="relative h-[100dvh] w-screen overflow-hidden"
+      style={{ width: '100vw', height: '100dvh', position: 'relative', overflow: 'hidden' }}
     >
       {/* Light / Dark map style toggle (top-left) */}
       <div

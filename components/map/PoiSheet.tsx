@@ -189,7 +189,7 @@ export default function PoiSheet() {
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent
         side={isDesktop ? 'right' : 'bottom'}
-        className="max-h-[85vh] sm:max-h-full sm:max-w-md w-full flex flex-col p-0 gap-0 overflow-hidden rounded-t-2xl sm:rounded-none border-t sm:border-t-0 sm:border-l bg-background/95 backdrop-blur-md"
+        className="max-h-[85dvh] sm:max-h-full sm:max-w-md w-full flex flex-col p-0 gap-0 overflow-hidden rounded-t-2xl sm:rounded-none border-t sm:border-t-0 sm:border-l bg-background/95 backdrop-blur-md"
       >
         {/* Mobile drag handle for one-handed reach */}
         <div className="sm:hidden pt-2.5 pb-1 flex justify-center">

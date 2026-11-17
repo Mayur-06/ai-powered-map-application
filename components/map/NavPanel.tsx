@@ -237,7 +237,7 @@ export default function NavPanel() {
 
   return (
     <div
-      className="absolute bottom-6 left-4 right-4 sm:right-auto sm:w-84 sm:max-w-sm z-20 rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur-md transition-all"
+      className="absolute bottom-6 left-4 right-4 sm:right-auto sm:w-84 sm:max-w-sm z-20 max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur-md transition-all"
       style={{
         bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
       }}
@@ -269,7 +269,7 @@ export default function NavPanel() {
                     startSimulation();
                   }
                 }}
-                className={`inline-flex min-h-[38px] items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
+                className={`inline-flex min-h-[40px] items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
                   isSimulating
                     ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300'
                     : 'bg-muted border-border text-foreground hover:bg-muted/80'
@@ -298,7 +298,7 @@ export default function NavPanel() {
                   }
                   divert();
                 }}
-                className={`inline-flex min-h-[38px] items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
+                className={`inline-flex min-h-[40px] items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer border ${
                   isDiverted
                     ? 'bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300'
                     : 'bg-muted border-border text-foreground hover:bg-muted/80'
