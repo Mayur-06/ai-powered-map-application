@@ -188,6 +188,7 @@ export default function ChatPanel() {
   const [input, setInput] = useState('');
   const [hasSkippedOnboarding, setHasSkippedOnboarding] = useState(false);
   const [isEditingPrefs, setIsEditingPrefs] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const isNavigating = useMapStore((state) => state.isNavigating);
   const notices = useMapStore((state) => state.notices);
   const prefs = useMapStore((state) => state.prefs);
@@ -203,6 +204,27 @@ export default function ChatPanel() {
       setPrefs(loaded);
     }
   }, [setPrefs]);
+
+  // Adjust sheet offset above on-screen keyboard using visualViewport API
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      // When on-screen keyboard appears, visualViewport shrinks relative to window.innerHeight
+      const offset = Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
+      setKeyboardOffset(offset);
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+    };
+  }, []);
 
   // Dedicated transport that attaches fresh map context with every request
   const transport = useMemo(
@@ -337,7 +359,15 @@ export default function ChatPanel() {
           // Desktop (>=640px): side panel positioned to avoid Legend, SearchBar and NavPanel
           'sm:bottom-auto sm:top-36 sm:right-4 sm:left-auto sm:w-96 sm:h-[calc(100dvh-420px)] sm:min-h-[380px] sm:max-h-[600px]'
         }`}
-        style={!isOpen ? { display: 'none' } : undefined}
+        style={{
+          ...(!isOpen ? { display: 'none' } : {}),
+          ...(keyboardOffset > 0
+            ? {
+                bottom: `${keyboardOffset}px`,
+                maxHeight: `min(60dvh, calc(100dvh - ${keyboardOffset}px))`,
+              }
+            : {}),
+        }}
         role="dialog"
         aria-label="AI Map Assistant"
       >
@@ -682,7 +712,12 @@ export default function ChatPanel() {
         {/* Panel Footer: Input form & Attribution */}
         <div
           className="border-t border-border/60 p-3 bg-background/80 shrink-0"
-          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}
+          style={{
+            paddingBottom:
+              keyboardOffset > 0
+                ? '0.75rem'
+                : 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))',
+          }}
         >
           <form
             onSubmit={(e) => {
@@ -698,6 +733,11 @@ export default function ChatPanel() {
                 value={input}
                 maxLength={500}
                 onChange={(e) => setInput(e.target.value)}
+                onFocus={() => {
+                  setTimeout(() => {
+                    inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  }, 150);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
