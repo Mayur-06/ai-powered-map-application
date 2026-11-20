@@ -1,14 +1,14 @@
-# CompassAI
+# CompassAI — Intelligent Map & Navigation
 
 An AI assistant that drives the map.
 Live: https://ai-powered-map-application.vercel.app
 
 ## What It Does
-- **Interactive Map**: Vector base map with light/dark styles, smooth pan/tilt/bearing controls, zoom buttons, and visual scale bar.
-- **GPS Location**: Live geolocation tracking with accuracy circle, heading tracking, and recentering.
-- **Search & Geocoding**: Forward geocoding, debounced autocomplete suggestions, reverse geocoding, and recent search history.
-- **Routing & Turn-by-Turn**: Multi-modal directions (drive, walk, cycle) with route preview, step maneuvers, ETA, and progress bar.
-- **POIs & Legend**: 8 curated POI categories rendered with custom SVGs, clustering, interactive sheets, and category toggles.
+- **Interactive Map**: Vector base map with light/dark styles, pan, zoom and compass controls, and visual scale bar.
+- **GPS Location**: Live geolocation tracking with heading tracking, and recentering.
+- **Search & Geocoding**: Forward geocoding, debounced autocomplete suggestions, and reverse geocoding.
+- **Routing & Turn-by-Turn**: Multi-modal directions (drive, walk, cycle) with route preview, step maneuvers, and ETA.
+- **POIs & Legend**: 8 curated POI categories rendered as category-colored circles in a clustered layer, with interactive sheets and category toggles.
 - **Conversational Search**: Natural language place queries executed via schema-validated database tools instead of LLM memory.
 - **Multi-Stop Route Optimization & Dynamic Rerouting**: Sequence optimization for up to 5 errands and automatic off-route/traffic rerouting.
 - **Review Insights**: Instant AI synthesis of visitor feedback highlighting pros, cons, vibe, and best-for tags.
@@ -21,9 +21,9 @@ graph TD
     UI -->|POST /api/chat| Handler[Chat Route Handler]
     Handler -->|Rate limit check| RL[lib/rateLimit.ts]
     Handler -->|streamText + tools| SDK[Vercel AI SDK]
-    SDK <-->|Prompt & tool calls| Gemini[Google Gemini LLM]
+    SDK <-->|Prompt and tool calls| Gemini[Google Gemini LLM]
     SDK -->|searchPlaces / summarizeReviews| Supabase[(Supabase PostGIS)]
-    SDK -->|getRoute / optimizeStops| MapboxAPIs[Mapbox Directions & Optimization APIs]
+    SDK -->|getRoute / optimizeStops| MapboxAPIs[Mapbox Directions and Optimization APIs]
     Handler -->|Stream tool results| UI
     UI -->|applyToolResult| Store[Zustand mapStore]
     Store --> Map[MapView / RouteLayer / PoiLayer / NavPanel]
@@ -46,7 +46,7 @@ graph TD
 - **UI & Styling**: Tailwind CSS 4.3.3, shadcn components, Lucide React ^1.72.0
 
 ## Setup
-1. **Prerequisites**: Node.js 20+, npm, and active Mapbox, Supabase, and Google Gemini accounts.
+1. **Prerequisites**: Node.js 20.6+, npm, and active Mapbox, Supabase, and Google Gemini accounts.
 2. **Install**:
    ```bash
    npm install
